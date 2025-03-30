@@ -398,3 +398,5 @@ pyrightconfig.json
 
 # PyCharm
 .idea/
+
+.windsurfrules
