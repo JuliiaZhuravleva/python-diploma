@@ -19,3 +19,6 @@ sqlparse==0.5.3
 tzdata==2025.1
 vine==5.1.0
 wcwidth==0.2.13
+
+django-rest-passwordreset~=1.5.0
+requests~=2.32.3
