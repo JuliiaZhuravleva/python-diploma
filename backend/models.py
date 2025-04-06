@@ -168,6 +168,12 @@ class Shop(models.Model):
 
 
 class Category(models.Model):
+    """
+    Модель категории товаров.
+    
+    Каждая категория может быть связана с несколькими магазинами через отношение
+    многие-ко-многим. Это позволяет фильтровать товары по категориям и магазинам.
+    """
     name = models.CharField(max_length=40, verbose_name='Название')
     shops = models.ManyToManyField(Shop, verbose_name='Магазины', related_name='categories', blank=True)
 
@@ -181,6 +187,13 @@ class Category(models.Model):
 
 
 class Product(models.Model):
+    """
+    Базовая модель товара.
+    
+    Содержит общую информацию о товаре, которая не зависит от конкретного магазина.
+    Каждый товар относится к определенной категории. Фактические предложения товаров
+    в магазинах представлены моделью ProductInfo.
+    """
     name = models.CharField(max_length=80, verbose_name='Название')
     category = models.ForeignKey(Category, verbose_name='Категория', related_name='products', blank=True,
                                  on_delete=models.CASCADE)
@@ -220,6 +233,14 @@ class ProductInfo(models.Model):
 
 
 class Parameter(models.Model):
+    """
+    Модель параметра (характеристики) товара.
+    
+    Хранит названия возможных параметров товаров (например, "Диагональ", "Цвет", "Процессор").
+    Используется для создания гибкой системы характеристик, где каждый товар
+    может иметь свой набор параметров с различными значениями.
+    Конкретные значения параметров для товаров хранятся в модели ProductParameter.
+    """
     name = models.CharField(max_length=40, verbose_name='Название')
 
     class Meta:
@@ -232,6 +253,13 @@ class Parameter(models.Model):
 
 
 class ProductParameter(models.Model):
+    """
+    Связующая модель между параметрами и товарами.
+    
+    Хранит конкретные значения параметров для конкретных товаров в конкретных магазинах.
+    Позволяет реализовать гибкую систему характеристик товаров, где набор параметров
+    может различаться для разных товаров.
+    """
     product_info = models.ForeignKey(ProductInfo, verbose_name='Информация о продукте',
                                      related_name='product_parameters', blank=True,
                                      on_delete=models.CASCADE)
@@ -311,6 +339,13 @@ class Order(models.Model):
   
 
 class OrderItem(models.Model):
+    """
+    Модель позиции заказа.
+    
+    Представляет отдельный товар в заказе с указанием количества.
+    Связана с конкретным заказом и информацией о товаре.
+    Ограничение уникальности предотвращает дублирование товаров в рамках одного заказа.
+    """
     order = models.ForeignKey(Order, verbose_name='Заказ', related_name='ordered_items', blank=True,
                               on_delete=models.CASCADE)
 
@@ -328,6 +363,13 @@ class OrderItem(models.Model):
 
 
 class ConfirmEmailToken(models.Model):
+    """
+    Модель токена для подтверждения email и сброса пароля.
+    
+    Используется в процессе регистрации пользователя или восстановления пароля.
+    Токен генерируется автоматически при создании объекта, если не указан явно.
+    Связан с конкретным пользователем и имеет временную метку создания.
+    """
     class Meta:
         verbose_name = 'Токен подтверждения Email'
         verbose_name_plural = 'Токены подтверждения Email'
