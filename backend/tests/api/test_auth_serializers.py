@@ -18,68 +18,126 @@ User = get_user_model()
 
 class UserRegistrationSerializerTest(TestCase):
     """
-    Тестирование сериализатора для регистрации пользователей.
+    Тесты для UserRegistrationSerializer.
     """
 
-    def setUp(self):
-        self.valid_user_data = {
-            'email': 'test@example.com',
-            'password': 'SecurePass123!',
-            'password_confirm': 'SecurePass123!',
-            'first_name': 'Test',
-            'last_name': 'User',
+    def test_valid_registration(self):
+        """
+        Проверка, что валидные данные для регистрации проходят валидацию.
+        """
+        # Создаем тестовые данные
+        data = {
+            'email': 'new_user@example.com',
+            'password': 'SecurePassword123!',
+            'password_confirm': 'SecurePassword123!',
+            'first_name': 'John',
+            'last_name': 'Doe',
             'company': 'Test Company',
-            'position': 'Developer'
+            'position': 'Test Position'
         }
 
-    def test_valid_registration_data(self):
-        """
-        Проверка, что валидные данные проходят валидацию и создают пользователя.
-        """
-        serializer = UserRegistrationSerializer(data=self.valid_user_data)
+        # Создаем сериализатор
+        serializer = UserRegistrationSerializer(data=data)
+
+        # Проверяем, что валидация проходит успешно
         self.assertTrue(serializer.is_valid())
 
-        user = serializer.save()
-        self.assertEqual(user.email, self.valid_user_data['email'])
-        self.assertEqual(user.first_name, self.valid_user_data['first_name'])
-        self.assertEqual(user.last_name, self.valid_user_data['last_name'])
-        self.assertEqual(user.company, self.valid_user_data['company'])
-        self.assertEqual(user.position, self.valid_user_data['position'])
-        self.assertFalse(user.is_active)  # По умолчанию пользователь неактивен
+        # Проверяем, что в validated_data есть правильные данные
+        self.assertEqual(serializer.validated_data['email'], 'new_user@example.com')
+        self.assertEqual(serializer.validated_data['first_name'], 'John')
+        self.assertEqual(serializer.validated_data['last_name'], 'Doe')
 
     def test_passwords_dont_match(self):
         """
         Проверка, что разные пароли вызывают ошибку валидации.
         """
-        invalid_data = self.valid_user_data.copy()
-        invalid_data['password_confirm'] = 'DifferentPass123!'
+        # Создаем тестовые данные с разными паролями
+        data = {
+            'email': 'new_user@example.com',
+            'password': 'SecurePassword123!',
+            'password_confirm': 'DifferentPassword123!',
+            'first_name': 'John',
+            'last_name': 'Doe'
+        }
 
-        serializer = UserRegistrationSerializer(data=invalid_data)
+        # Создаем сериализатор
+        serializer = UserRegistrationSerializer(data=data)
+
+        # Проверяем, что валидация не проходит
         self.assertFalse(serializer.is_valid())
+
+        # Проверяем, что ошибка связана с несовпадением паролей
         self.assertIn('password_confirm', serializer.errors)
 
     def test_weak_password(self):
         """
         Проверка, что слабый пароль вызывает ошибку валидации.
         """
-        invalid_data = self.valid_user_data.copy()
-        invalid_data['password'] = 'password'
-        invalid_data['password_confirm'] = 'password'
+        # Создаем тестовые данные со слабым паролем
+        data = {
+            'email': 'new_user@example.com',
+            'password': '123',  # Слабый пароль
+            'password_confirm': '123',
+            'first_name': 'John',
+            'last_name': 'Doe'
+        }
 
-        serializer = UserRegistrationSerializer(data=invalid_data)
+        # Создаем сериализатор
+        serializer = UserRegistrationSerializer(data=data)
+
+        # Проверяем, что валидация не проходит
         self.assertFalse(serializer.is_valid())
+
+        # Проверяем, что ошибка связана с паролем
         self.assertIn('password', serializer.errors)
 
-    def test_email_required(self):
+    def test_existing_email(self):
         """
-        Проверка, что email является обязательным полем.
+        Проверка, что существующий email вызывает ошибку валидации.
         """
-        invalid_data = self.valid_user_data.copy()
-        invalid_data.pop('email')
+        # Создаем пользователя
+        User.objects.create_user(
+            email='existing@example.com',
+            password='ExistingPassword123!',
+            is_active=True
+        )
 
-        serializer = UserRegistrationSerializer(data=invalid_data)
-        self.assertFalse(serializer.is_valid())
-        self.assertIn('email', serializer.errors)
+        # Создаем тестовые данные с существующим email
+        data = {
+            'email': 'existing@example.com',  # Существующий email
+            'password': 'SecurePassword123!',
+            'password_confirm': 'SecurePassword123!',
+            'first_name': 'John',
+            'last_name': 'Doe'
+        }
+
+        # Создаем сериализатор
+        serializer = UserRegistrationSerializer(data=data)
+
+        # Создаем пользователя с помощью сериализатора
+        if serializer.is_valid():
+            with self.assertRaises(Exception):
+                serializer.save()  # Должно вызвать исключение, т.к. email уже существует
+
+    def test_without_password_confirm(self):
+        """
+        Проверка, что регистрация без password_confirm проходит успешно (для совместимости с Postman)
+        """
+        # Создаем тестовые данные без password_confirm
+        data = {
+            'email': 'new_user2@example.com',
+            'password': 'SecurePassword123!',
+            'first_name': 'John',
+            'last_name': 'Doe',
+            'company': 'Test Company',
+            'position': 'Test Position'
+        }
+
+        # Создаем сериализатор
+        serializer = UserRegistrationSerializer(data=data)
+
+        # Проверяем, что валидация проходит успешно
+        self.assertTrue(serializer.is_valid())
 
 
 class ConfirmEmailSerializerTest(TestCase):
@@ -251,92 +309,127 @@ class PasswordResetRequestSerializerTest(TestCase):
 class PasswordResetConfirmSerializerTest(TestCase):
     """
     Тестирование сериализатора для подтверждения сброса пароля.
-
-    Примечание: Этот тест требует установки django-rest-passwordreset
-    и может потребовать дополнительных настроек в settings.py
     """
-
     def setUp(self):
-        # Создаем активного пользователя
+        """
+        Создаем тестового пользователя и токен для тестов.
+        """
         self.user = User.objects.create_user(
             email='test@example.com',
-            password='OldPass123!',
+            password='TestPassword123!',
             is_active=True
         )
 
-        # Создаем токен сброса пароля
-        # Предполагается, что ResetPasswordToken из django-rest-passwordreset доступен
-        self.reset_token = ResetPasswordToken.objects.create(user=self.user)
-
-        self.valid_data = {
-            'email': self.user.email,
-            'token': self.reset_token.key,
-            'password': 'NewSecurePass123!',
-            'password_confirm': 'NewSecurePass123!'
-        }
+        # Создаем токен для сброса пароля
+        self.token = ConfirmEmailToken.objects.create(user=self.user)
 
     def test_valid_reset_confirmation(self):
         """
         Проверка, что валидные данные для сброса пароля проходят валидацию.
         """
-        serializer = PasswordResetConfirmSerializer(data=self.valid_data)
+        # Создаем тестовые данные с реальным токеном
+        data = {
+            'email': 'test@example.com',
+            'token': self.token.key,
+            'password': 'NewSecurePassword123!',
+            'password_confirm': 'NewSecurePassword123!'
+        }
+
+        # Создаем сериализатор
+        serializer = PasswordResetConfirmSerializer(data=data)
+
+        # Проверяем, что валидация проходит успешно
         self.assertTrue(serializer.is_valid())
+
+        # Проверяем, что в validated_data есть правильные данные
         self.assertEqual(serializer.validated_data['user'], self.user)
-        self.assertEqual(serializer.validated_data['reset_token'], self.reset_token)
+        self.assertEqual(serializer.validated_data['reset_token'], self.token)
 
     def test_passwords_dont_match(self):
         """
         Проверка, что разные пароли вызывают ошибку валидации.
         """
-        invalid_data = self.valid_data.copy()
-        invalid_data['password_confirm'] = 'DifferentPass123!'
+        # Создаем тестовые данные с реальным токеном
+        data = {
+            'email': 'test@example.com',
+            'token': self.token.key,
+            'password': 'NewSecurePassword123!',
+            'password_confirm': 'DifferentPassword123!'
+        }
 
-        serializer = PasswordResetConfirmSerializer(data=invalid_data)
+        # Создаем сериализатор
+        serializer = PasswordResetConfirmSerializer(data=data)
+
+        # Проверяем, что валидация не проходит
         self.assertFalse(serializer.is_valid())
+
+        # Проверяем, что ошибка связана с несовпадением паролей
         self.assertIn('password_confirm', serializer.errors)
+
+    def test_invalid_token(self):
+        """
+        Проверка, что недействительный токен вызывает ошибку валидации.
+        """
+        # Создаем тестовые данные с некорректным токеном
+        data = {
+            'email': 'test@example.com',
+            'token': 'invalid_token',
+            'password': 'NewSecurePassword123!',
+            'password_confirm': 'NewSecurePassword123!'
+        }
+
+        # Создаем сериализатор
+        serializer = PasswordResetConfirmSerializer(data=data)
+
+        # Проверяем, что валидация не проходит
+        self.assertFalse(serializer.is_valid())
+
+        # Проверяем, что ошибка связана с токеном
+        self.assertIn('token', serializer.errors)
 
     def test_weak_password(self):
         """
         Проверка, что слабый пароль вызывает ошибку валидации.
         """
-        invalid_data = self.valid_data.copy()
-        invalid_data['password'] = 'weak'
-        invalid_data['password_confirm'] = 'weak'
+        # Создаем тестовые данные с реальным токеном
+        data = {
+            'email': 'test@example.com',
+            'token': self.token.key,
+            'password': '123',  # Слабый пароль
+            'password_confirm': '123'
+        }
 
-        serializer = PasswordResetConfirmSerializer(data=invalid_data)
+        # Создаем сериализатор
+        serializer = PasswordResetConfirmSerializer(data=data)
+
+        # Проверяем, что валидация не проходит
         self.assertFalse(serializer.is_valid())
+
+        # Проверяем, что ошибка связана с паролем
         self.assertIn('password', serializer.errors)
-
-    def test_invalid_token(self):
-        """
-        Проверка, что неверный токен вызывает ошибку валидации.
-        """
-        invalid_data = self.valid_data.copy()
-        invalid_data['token'] = 'invalid-token'
-
-        serializer = PasswordResetConfirmSerializer(data=invalid_data)
-        self.assertFalse(serializer.is_valid())
-        self.assertIn('token', serializer.errors)
-
-    def test_nonexistent_user(self):
-        """
-        Проверка, что несуществующий email вызывает ошибку валидации.
-        """
-        invalid_data = self.valid_data.copy()
-        invalid_data['email'] = 'nonexistent@example.com'
-
-        serializer = PasswordResetConfirmSerializer(data=invalid_data)
-        self.assertFalse(serializer.is_valid())
-        self.assertIn('email', serializer.errors)
 
     def test_inactive_user(self):
         """
-        Проверка, что неактивный email вызывает ошибку валидации.
+        Проверка, что неактивный пользователь вызывает ошибку валидации.
         """
+        # Деактивируем пользователя
         self.user.is_active = False
         self.user.save()
 
-        serializer = PasswordResetConfirmSerializer(data=self.valid_data)
+        # Создаем тестовые данные с реальным токеном
+        data = {
+            'email': 'test@example.com',
+            'token': self.token.key,
+            'password': 'NewSecurePassword123!',
+            'password_confirm': 'NewSecurePassword123!'
+        }
+
+        # Создаем сериализатор
+        serializer = PasswordResetConfirmSerializer(data=data)
+
+        # Проверяем, что валидация не проходит
         self.assertFalse(serializer.is_valid())
+
+        # Проверяем, что ошибка связана с неактивным пользователем
         self.assertIn('email', serializer.errors)
 

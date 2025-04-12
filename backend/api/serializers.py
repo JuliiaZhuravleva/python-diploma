@@ -150,25 +150,27 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
     Предназначен только для создания новых пользователей.
     """
     password = serializers.CharField(write_only=True, required=True, style={'input_type': 'password'})
-    password_confirm = serializers.CharField(write_only=True, required=True, style={'input_type': 'password'})
+    password_confirm = serializers.CharField(write_only=True, required=False, style={'input_type': 'password'})
 
     class Meta:
         model = User
         fields = ('email', 'password', 'password_confirm', 'first_name', 'last_name', 'company', 'position')
 
     def validate(self, attrs):
-        # Проверяем совпадение паролей
-        if attrs['password'] != attrs['password_confirm']:
+        # Проверяем совпадение паролей, если password_confirm указан
+        password_confirm = attrs.get('password_confirm')
+        if password_confirm is not None and attrs['password'] != password_confirm:
             raise serializers.ValidationError({"password_confirm": "Пароли не совпадают"})
-
-        # Удаляем поле password_confirm, так как оно не используется при создании пользователя
-        attrs.pop('password_confirm')
 
         # Валидация пароля
         try:
             validate_password(attrs['password'])
         except ValidationError as e:
             raise serializers.ValidationError({"password": e.messages})
+
+        # Удаляем поле password_confirm, так как оно не используется при создании пользователя
+        if 'password_confirm' in attrs:
+            attrs.pop('password_confirm')
 
         return attrs
 
@@ -278,11 +280,12 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
     email = serializers.EmailField(required=True)
     token = serializers.CharField(required=True)
     password = serializers.CharField(write_only=True, required=True, style={'input_type': 'password'})
-    password_confirm = serializers.CharField(write_only=True, required=True, style={'input_type': 'password'})
+    password_confirm = serializers.CharField(write_only=True, required=False, style={'input_type': 'password'})
 
     def validate(self, attrs):
-        # Проверяем совпадение паролей
-        if attrs['password'] != attrs['password_confirm']:
+        # Проверяем совпадение паролей, если password_confirm указан
+        password_confirm = attrs.get('password_confirm')
+        if password_confirm is not None and attrs['password'] != password_confirm:
             raise serializers.ValidationError({"password_confirm": "Пароли не совпадают"})
 
         # Проверяем токен и email
@@ -298,12 +301,10 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
                 raise serializers.ValidationError({"email": "Аккаунт не активирован. Сначала подтвердите email."})
 
             # Проверяем токен
-            # Здесь предполагается, что вы используете django-rest-passwordreset
-            # и проверка токена происходит через встроенный функционал
-            from django_rest_passwordreset.models import ResetPasswordToken
             try:
-                reset_token = ResetPasswordToken.objects.get(key=token, user=user)
-            except ResetPasswordToken.DoesNotExist:
+                # Используем модель для проверки токена
+                reset_token = ConfirmEmailToken.objects.get(key=token, user=user)
+            except ConfirmEmailToken.DoesNotExist:
                 raise serializers.ValidationError({"token": "Недействительный токен сброса пароля"})
 
             # Валидация пароля
@@ -312,8 +313,9 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
             except ValidationError as e:
                 raise serializers.ValidationError({"password": e.messages})
 
-            # Удаляем неиспользуемые поля
-            attrs.pop('password_confirm')
+            # Удаляем поле password_confirm, если оно есть
+            if 'password_confirm' in attrs:
+                attrs.pop('password_confirm')
 
             # Сохраняем пользователя и токен для удобного доступа в view
             attrs['user'] = user
@@ -322,4 +324,3 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
             return attrs
         except User.DoesNotExist:
             raise serializers.ValidationError({"email": "Пользователь с таким email не существует"})
-
