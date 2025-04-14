@@ -3,6 +3,7 @@ from backend.api.views.user_views import (
     UserRegisterView, ConfirmEmailView, UserLoginView, UserDetailsView,
     PasswordResetRequestView, PasswordResetConfirmView, ContactViewSet
 )
+from backend.api.views.shop_views import ShopView
 from backend.api.views import TestAuthView
 
 app_name = 'api'
@@ -19,4 +20,7 @@ urlpatterns = [
     path('user/password_reset', PasswordResetRequestView.as_view(), name='password-reset-request'),
     path('user/password_reset/confirm', PasswordResetConfirmView.as_view(), name='password-reset-confirm'),
     path('user/contact', ContactViewSet.as_view(), name='user-contact'),
+
+    # URL для магазинов
+    path('shops', ShopView.as_view(), name='shops'),
 ]
