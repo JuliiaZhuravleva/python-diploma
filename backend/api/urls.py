@@ -3,7 +3,7 @@ from backend.api.views.user_views import (
     UserRegisterView, ConfirmEmailView, UserLoginView, UserDetailsView,
     PasswordResetRequestView, PasswordResetConfirmView, ContactViewSet
 )
-from backend.api.views.shop_views import ShopView
+from backend.api.views.shop_views import ShopView, CategoryView
 from backend.api.views import TestAuthView
 
 app_name = 'api'
@@ -23,4 +23,5 @@ urlpatterns = [
 
     # URL для магазинов
     path('shops', ShopView.as_view(), name='shops'),
+    path('categories', CategoryView.as_view(), name='categories'),
 ]

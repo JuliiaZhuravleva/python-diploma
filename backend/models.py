@@ -195,7 +195,7 @@ class Product(models.Model):
     в магазинах представлены моделью ProductInfo.
     """
     name = models.CharField(max_length=80, verbose_name='Название')
-    category = models.ForeignKey(Category, verbose_name='Категория', related_name='products', blank=True,
+    category = models.ForeignKey(Category, verbose_name='Категория', related_name='products', blank=True, null=True,
                                  on_delete=models.CASCADE)
 
     class Meta:
