@@ -1,5 +1,6 @@
 from django.urls import path
 
+from backend.api.views.partner_views import PartnerUpdateView
 from backend.api.views.product_views import ProductView
 from backend.api.views.user_views import (
     UserRegisterView, ConfirmEmailView, UserLoginView, UserDetailsView,
@@ -27,4 +28,7 @@ urlpatterns = [
     path('shops', ShopView.as_view(), name='shops'),
     path('categories', CategoryView.as_view(), name='categories'),
     path('products', ProductView.as_view(), name='products'),
+
+    # URL для партнеров (магазинов)
+    path('partner/update', PartnerUpdateView.as_view(), name='partner-update'),
 ]
