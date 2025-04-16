@@ -1,5 +1,6 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.pagination import PageNumberPagination
 from django.db.models import Q
@@ -39,7 +40,7 @@ class ProductView(APIView):
             'product', 'shop'
         ).prefetch_related(
             'product_parameters__parameter'
-        )
+        ).order_by('id')
 
         # Применение фильтров
         if query_params.get('shop_id'):
@@ -61,3 +62,24 @@ class ProductView(APIView):
 
         serializer = ProductInfoSerializer(paginated_queryset, many=True)
         return paginator.get_paginated_response(serializer.data)
+
+
+class ProductDetailView(APIView):
+    """
+    Представление для получения детальной информации о товаре.
+    """
+    permission_classes = [AllowAny]
+
+    def get(self, request, pk):
+        """
+        Получение подробной информации о конкретном товаре.
+        """
+        try:
+            product_info = ProductInfo.objects.get(pk=pk)
+            serializer = ProductInfoSerializer(product_info)
+            return Response(serializer.data)
+        except ProductInfo.DoesNotExist:
+            return Response(
+                {"status": False, "error": "Товар не найден"},
+                status=status.HTTP_404_NOT_FOUND
+            )

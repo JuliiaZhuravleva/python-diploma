@@ -2,8 +2,8 @@ from django.urls import path
 
 from backend.api.views.basket_views import BasketView
 from backend.api.views.order_views import OrderView, OrderDetailView
-from backend.api.views.partner_views import PartnerUpdateView
-from backend.api.views.product_views import ProductView
+from backend.api.views.partner_views import PartnerUpdateView, PartnerStateView, PartnerOrdersView
+from backend.api.views.product_views import ProductView, ProductDetailView
 from backend.api.views.user_views import (
     UserRegisterView, ConfirmEmailView, UserLoginView, UserDetailsView,
     PasswordResetRequestView, PasswordResetConfirmView, ContactViewSet
@@ -30,6 +30,7 @@ urlpatterns = [
     path('shops', ShopView.as_view(), name='shops'),
     path('categories', CategoryView.as_view(), name='categories'),
     path('products', ProductView.as_view(), name='products'),
+    path('products/<int:pk>', ProductDetailView.as_view(), name='product-detail'),
 
     # URL для корзины и заказов
     path('basket', BasketView.as_view(), name='basket'),
@@ -38,4 +39,6 @@ urlpatterns = [
 
     # URL для партнеров (магазинов)
     path('partner/update', PartnerUpdateView.as_view(), name='partner-update'),
+    path('partner/state', PartnerStateView.as_view(), name='partner-state'),
+    path('partner/orders', PartnerOrdersView.as_view(), name='partner-orders'),
 ]

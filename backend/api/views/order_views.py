@@ -201,3 +201,66 @@ class OrderDetailView(APIView):
                 {"status": False, "error": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+    def put(self, request, pk):
+        """
+        Отмена заказа пользователем.
+
+        Пользователь может отменить только свой заказ и только в статусе "new".
+        При отмене заказа товары возвращаются в наличие магазинов.
+
+        Ожидаемый формат данных:
+        {
+            "action": "cancel"  # Действие - отмена заказа
+        }
+        """
+        try:
+            # Получаем заказ пользователя
+            order = Order.objects.get(id=pk, user=request.user)
+
+            # Проверяем, что заказ в статусе "new"
+            if order.state != 'new':
+                return Response(
+                    {"status": False, "error": "Отменить можно только новый заказ"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Проверяем действие
+            action = request.data.get('action')
+            if action != 'cancel':
+                return Response(
+                    {"status": False, "error": "Неизвестное действие. Допустимое действие: 'cancel'"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Начинаем транзакцию для отмены заказа
+            with transaction.atomic():
+                # Возвращаем товары в наличие
+                order_items = OrderItem.objects.filter(order=order).select_related('product_info')
+
+                for item in order_items:
+                    product_info = item.product_info
+                    # Увеличиваем количество товара в магазине
+                    product_info.quantity += item.quantity
+                    product_info.save()
+
+                # Меняем статус заказа на 'canceled'
+                order.state = 'canceled'
+                order.save()
+
+            serializer = OrderSerializer(order)
+            return Response(
+                {"status": True, "message": "Заказ успешно отменен", "data": serializer.data},
+                status=status.HTTP_200_OK
+            )
+        except Order.DoesNotExist:
+            return Response(
+                {"status": False, "error": "Заказ не найден"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            return Response(
+                {"status": False, "error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
