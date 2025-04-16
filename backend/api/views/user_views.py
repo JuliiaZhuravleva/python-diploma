@@ -212,12 +212,12 @@ class ContactViewSet(APIView):
     GET: Возвращает список контактов пользователя.
     POST: Создает новый контакт.
     PUT: Обновляет существующий контакт.
-    DELETE: Удаляет контакты.
+    DELETE: Мягко удаляет контакты.
     """
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        contacts = Contact.objects.filter(user=request.user)
+        contacts = Contact.objects.filter(user=request.user, is_deleted=False)
         serializer = ContactSerializer(contacts, many=True)
         return Response(serializer.data)
 
@@ -237,7 +237,7 @@ class ContactViewSet(APIView):
             return Response({'error': 'Не указан ID контакта'}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            contact = Contact.objects.get(id=contact_id, user=request.user)
+            contact = Contact.objects.get(id=contact_id, user=request.user, is_deleted=False)
         except Contact.DoesNotExist:
             return Response({'error': 'Контакт не найден'}, status=status.HTTP_404_NOT_FOUND)
 
@@ -250,7 +250,14 @@ class ContactViewSet(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request):
-        # В запросе должен быть указан список id контактов для удаления
+        """
+        Мягкое удаление контактов (пометка как удаленные).
+
+        Ожидаемый формат данных:
+        {
+            "items": "1,2,3"  # Строка с ID контактов через запятую
+        }
+        """
         items_str = request.data.get('items')
         if not items_str:
             return Response({'error': 'Не указаны ID контактов для удаления'}, status=status.HTTP_400_BAD_REQUEST)
@@ -261,7 +268,11 @@ class ContactViewSet(APIView):
         except ValueError:
             return Response({'error': 'Некорректный формат списка ID'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Удаляем контакты, принадлежащие пользователю
-        deleted_count, _ = Contact.objects.filter(id__in=items_ids, user=request.user).delete()
+        # Получаем контакты пользователя из указанного списка
+        contacts = Contact.objects.filter(id__in=items_ids, user=request.user, is_deleted=False)
+        deleted_count = contacts.count()
+
+        # Помечаем контакты как удаленные
+        contacts.update(is_deleted=True)
 
         return Response({'message': f'Удалено контактов: {deleted_count}'})

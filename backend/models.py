@@ -301,6 +301,8 @@ class Contact(models.Model):
         verbose_name='Телефон'
     )
 
+    is_deleted = models.BooleanField(default=False, verbose_name='Удален')
+
     class Meta:
         verbose_name = 'Контакты пользователя'
         verbose_name_plural = "Список контактов пользователя"

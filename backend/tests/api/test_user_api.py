@@ -233,7 +233,7 @@ class ContactAPITestCase(TestCase):
 
     def test_delete_contact(self):
         """
-        Тестирование удаления контактов.
+        Тестирование мягкого удаления контактов.
         """
         # Создаем несколько контактов
         contact1 = Contact.objects.create(user=self.user, **self.contact_data)
@@ -249,13 +249,16 @@ class ContactAPITestCase(TestCase):
         response = self.client.delete(self.contact_url, {'items': str(contact1.id)}, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        # Проверяем, что контакт удален
-        self.assertFalse(Contact.objects.filter(id=contact1.id).exists())
-        self.assertTrue(Contact.objects.filter(id=contact2.id).exists())
+        # Обновляем объект из базы данных
+        contact1 = Contact.objects.get(id=contact1.id)
 
-        # Удаляем второй контакт
-        response = self.client.delete(self.contact_url, {'items': str(contact2.id)}, format='json')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # Проверяем, что контакт помечен как удаленный
+        self.assertTrue(contact1.is_deleted)
 
-        # Проверяем, что оба контакта удалены
-        self.assertEqual(Contact.objects.count(), 0)
+        # Проверяем, что физически контакт все еще существует
+        self.assertTrue(Contact.objects.filter(id=contact1.id).exists())
+
+        # Проверяем, что второй контакт не помечен как удаленный
+        contact2 = Contact.objects.get(id=contact2.id)
+        self.assertFalse(contact2.is_deleted)
+
