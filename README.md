@@ -56,22 +56,49 @@
     pip install -r requirements.txt
     
     ```
+
+4. Создайте файл .env в корневой директории проекта и настройте следующие переменные:
     
-4. Выполните миграции базы данных:
+    ```bash    
+   SECRET_KEY=your_secret_key 
+   DEBUG=True 
+   ALLOWED_HOSTS=localhost,127.0.0.1
+
+   # Database settings
+   DB_ENGINE=django.db.backends.sqlite3 
+   DB_NAME=db.sqlite3 
+   DB_USER= 
+   DB_PASSWORD= 
+   DB_HOST= 
+   DB_PORT=
+   
+   # Email settings
+   EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend
+   EMAIL_HOST=smtp.gmail.com 
+   EMAIL_PORT=587 
+   EMAIL_USE_TLS=True 
+   EMAIL_HOST_USER=your-email@gmail.com 
+   EMAIL_HOST_PASSWORD=your-app-password 
+   DEFAULT_FROM_EMAIL=noreply@order-service.com
+   
+   # Debugging settings
+   DEBUG_SQL=False
+    ```
+5. Выполните миграции базы данных:
     
     ```bash
     python manage.py migrate
     
     ```
     
-5. Создайте суперпользователя (для доступа к админ-панели):
+6. Создайте суперпользователя (для доступа к админ-панели):
     
     ```bash
     python manage.py createsuperuser
     
     ```
     
-6. Запустите сервер разработки:
+7. Запустите сервер разработки:
     
     ```bash
     python manage.py runserver
@@ -80,6 +107,42 @@
     
 
 Приложение будет доступно по адресу: http://localhost:8000/
+
+## Конфигурация
+
+### Переключение базы данных
+
+Для использования PostgreSQL вместо SQLite измените следующие переменные в .env файле:
+
+```bash
+  DB_ENGINE=django.db.backends.postgresql
+  DB_NAME=your_db_name
+  DB_USER=your_db_user 
+  DB_PASSWORD=your_db_password 
+  DB_HOST=localhost 
+  DB_PORT=5432
+```
+
+### Настройка электронной почты
+
+Для отправки реальных писем вместо вывода в консоль измените настройки в .env файле:
+
+```bash
+  EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
+  EMAIL_HOST=smtp.gmail.com
+  EMAIL_PORT=587
+  EMAIL_USE_TLS=True
+  EMAIL_HOST_USER=your-email@gmail.com
+  EMAIL_HOST_PASSWORD=your-app-password
+```
+
+### Включение логирования SQL-запросов
+
+Для включения логирования SQL-запросов установите в .env файле:
+
+```bash
+  DEBUG_SQL=True
+```
 
 ## Тестирование API
 
@@ -140,6 +203,8 @@ ROOT/
 
 ## Разработка и тестирование
 
+При разработке и тестировании вы можете легко изменять конфигурацию проекта, редактируя файл .env. Это позволяет быстро переключаться между различными настройками базы данных, почтовыми серверами и режимами отладки без изменения кода.
+
 ### Запуск unit тестов
 
 ```bash
@@ -149,6 +214,8 @@ python manage.py test
 ### Тестовые данные для разработки
 
 Для ускорения разработки и тестирования в проекте предусмотрены инструменты для быстрой загрузки тестовых данных:
+
+Примечание: Убедитесь, что в вашем .env файле установлено `DEBUG=True` для использования тестовых данных.
 
 ```bash
 # Загрузка тестовых данных
