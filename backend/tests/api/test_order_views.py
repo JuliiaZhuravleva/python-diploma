@@ -185,3 +185,42 @@ class OrderViewTestCase(TestCase):
         self.assertEqual(response.data['state'], 'new')
         self.assertEqual(len(response.data['ordered_items']), 1)
         self.assertEqual(response.data['ordered_items'][0]['quantity'], 2)
+
+    def test_place_order_with_inactive_shop(self):
+        """
+        Тестирование сценария, когда магазин деактивируется после добавления товара в корзину.
+        При попытке оформить заказ должна возникать ошибка.
+        """
+        # Создаем корзину
+        basket = Order.objects.create(user=self.user, state='basket')
+
+        # Добавляем товар из активного магазина
+        order_item = OrderItem.objects.create(
+            order=basket,
+            product_info=self.product_info,  # Это товар из активного магазина
+            quantity=2
+        )
+
+        # Деактивируем магазин
+        self.shop.state = False
+        self.shop.save()
+
+        # Данные для запроса
+        data = {
+            'id': basket.id,
+            'contact': self.contact.id
+        }
+
+        # Пытаемся оформить заказ
+        response = self.client.post(self.order_url, data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(response.data['status'])
+        self.assertIn("не принимают заказы", response.data['error'])
+
+        # Проверяем, что заказ остался в статусе "корзина"
+        basket.refresh_from_db()
+        self.assertEqual(basket.state, 'basket')
+
+        # Проверяем, что количество товара не изменилось
+        self.product_info.refresh_from_db()
+        self.assertEqual(self.product_info.quantity, 10)  # Осталось как было

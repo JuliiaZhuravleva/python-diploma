@@ -35,8 +35,10 @@ class ProductView(APIView):
         """
         query_params = request.query_params
 
-        # Базовый QuerySet
-        queryset = ProductInfo.objects.all().select_related(
+        # Базовый QuerySet - включает фильтрацию по статусу магазина (только активные)
+        queryset = ProductInfo.objects.filter(
+            shop__state=True
+        ).select_related(
             'product', 'shop'
         ).prefetch_related(
             'product_parameters__parameter'
@@ -73,12 +75,25 @@ class ProductDetailView(APIView):
     def get(self, request, pk):
         """
         Получение подробной информации о конкретном товаре.
+
+        Товары из неактивных магазинов не будут доступны.
         """
         try:
-            product_info = ProductInfo.objects.get(pk=pk)
+            # Также добавляем фильтрацию по статусу магазина
+            product_info = ProductInfo.objects.filter(
+                pk=pk,
+                shop__state=True  # Только из активных магазинов
+            ).first()
+
+            if not product_info:
+                return Response(
+                    {"status": False, "error": "Товар не найден или магазин не активен"},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
             serializer = ProductInfoSerializer(product_info)
             return Response(serializer.data)
-        except ProductInfo.DoesNotExist:
+        except Exception as e:
             return Response(
                 {"status": False, "error": "Товар не найден"},
                 status=status.HTTP_404_NOT_FOUND

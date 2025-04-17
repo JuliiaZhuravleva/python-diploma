@@ -20,6 +20,26 @@ class BasketView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def parse_items_data(self, request):
+        """
+        Обрабатывает данные о товарах из запроса для добавления/обновления корзины.
+
+        Функция поддерживает два формата входных данных:
+        1. Список объектов (когда клиентское приложение отправляет данные как JSON)
+        2. Строку с JSON (когда данные отправляются через form-data)
+
+        Аргументы:
+            request (Request): Объект запроса Django Rest Framework
+
+        Возвращает:
+            tuple: Кортеж из двух элементов:
+                - items_list (list): Список товаров в формате [{'id': 1, 'quantity': 2}, ...] (None при ошибке)
+                - error_response (Response): Объект ответа с ошибкой (None при успешном парсинге)
+
+        Примеры входных данных:
+            - Как JSON-список: [{"product_info": 1, "quantity": 2}, ...]
+            - Как строка: '{"product_info": 1, "quantity": 2}'
+            - В form-data: items=[{"product_info": 1, "quantity": 2}, ...]
+        """
         items_data = request.data.get('items')
         if not items_data:
             return None, Response(
@@ -81,6 +101,10 @@ class BasketView(APIView):
         if error_response:
             return error_response
 
+        # Флаг для отслеживания успешно добавленных товаров
+        any_items_added = False
+        error_messages = []
+
         # Получаем или создаем корзину
         with transaction.atomic():
             basket, _ = Order.objects.get_or_create(
@@ -118,22 +142,27 @@ class BasketView(APIView):
                                     product_info=product_info,
                                     quantity=quantity
                                 )
+                            # Отмечаем, что хотя бы один товар был добавлен
+                            any_items_added = True
                         else:
-                            return Response(
-                                {"status": False,
-                                 "error": f"Недостаточное количество товара {product_info.product.name}"},
-                                status=status.HTTP_400_BAD_REQUEST
-                            )
+                            error_messages.append(f"Недостаточное количество товара {product_info.product.name}")
                     else:
-                        return Response(
-                            {"status": False, "error": f"Магазин {product_info.shop.name} не принимает заказы"},
-                            status=status.HTTP_400_BAD_REQUEST
-                        )
+                        error_messages.append(f"Магазин {product_info.shop.name} не принимает заказы")
                 except ProductInfo.DoesNotExist:
-                    return Response(
-                        {"status": False, "error": f"Товар с ID {product_info_id} не найден"},
-                        status=status.HTTP_400_BAD_REQUEST
-                    )
+                    error_messages.append(f"Товар с ID {product_info_id} не найден")
+
+            # Если не удалось добавить ни одного товара
+            if not any_items_added:
+                # Удаляем пустую корзину, если она была создана
+                if basket.ordered_items.count() == 0:
+                    basket.delete()
+
+                # Возвращаем ошибку с сообщением о проблеме
+                error_message = "Не удалось добавить товары в корзину. " + "; ".join(error_messages)
+                return Response(
+                    {"status": False, "error": error_message},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
             # Получаем обновленные данные корзины
             basket = Order.objects.filter(id=basket.id).prefetch_related(

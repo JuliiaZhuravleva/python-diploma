@@ -4,7 +4,7 @@ from rest_framework import status, permissions
 from django.db import transaction
 from django.core.mail import send_mail
 from django.conf import settings
-from backend.models import Order, Contact, OrderItem
+from backend.models import Order, Contact, OrderItem, Shop
 from backend.api.serializers import OrderSerializer
 
 
@@ -81,7 +81,28 @@ class OrderView(APIView):
 
         # Оформляем заказ
         with transaction.atomic():
-            # Проверяем количество товаров в магазине
+            # Сначала проверяем активность всех магазинов
+            # Получаем уникальные магазины из товаров в корзине
+            shop_ids = OrderItem.objects.filter(order=order).values_list(
+                'product_info__shop_id', flat=True
+            ).distinct()
+
+            # Проверяем активность магазинов одним запросом
+            inactive_shops = Shop.objects.filter(
+                id__in=shop_ids,
+                state=False
+            ).values_list('name', flat=True)
+
+            if inactive_shops:
+                # Формируем сообщение об ошибке с перечислением неактивных магазинов
+                shops_str = ", ".join(inactive_shops)
+                return Response(
+                    {"status": False,
+                     "error": f"Невозможно оформить заказ, так как следующие магазины не принимают заказы: {shops_str}"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Теперь проверяем количество товаров в магазинах
             order_items = OrderItem.objects.filter(order=order).select_related('product_info')
 
             for item in order_items:
