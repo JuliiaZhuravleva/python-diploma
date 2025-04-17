@@ -1,0 +1,96 @@
+<!-- backend/templates/admin/import_export.html -->
+{% extends "admin/base_site.html" %}
+{% load i18n static %}
+
+{% block extrastyle %}
+  {{ block.super }}
+  <style>
+    .import-export-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 30px;
+      margin-top: 20px;
+    }
+    .panel {
+      background-color: white;
+      border-radius: 5px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+      padding: 20px;
+    }
+    .panel h3 {
+      margin-top: 0;
+      color: #417690;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 10px;
+    }
+    .form-row {
+      margin-bottom: 15px;
+    }
+    .form-row label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+    .form-row select, .form-row input[type="file"] {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    .button-row {
+      margin-top: 20px;
+    }
+  </style>
+{% endblock %}
+
+{% block content %}
+  <h1>{% trans "Импорт и экспорт данных" %}</h1>
+
+  <div class="import-export-container">
+    <!-- Панель импорта -->
+    <div class="panel">
+      <h3>{% trans "Импорт данных" %}</h3>
+      <form method="post" action="{% url 'api:partner-update' %}" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="form-row">
+          <label for="import-url">{% trans "URL для импорта YAML" %}:</label>
+          <input type="text" id="import-url" name="url" placeholder="https://example.com/data.yaml" />
+        </div>
+        <div class="button-row">
+          <button type="submit" class="default">{% trans "Импортировать" %}</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Панель экспорта -->
+    <div class="panel">
+      <h3>{% trans "Экспорт данных" %}</h3>
+      <form method="get" action="{% url 'api:partner-export' %}">
+        <div class="form-row">
+          <label for="export-shop">{% trans "Выберите магазин" %}:</label>
+          <select id="export-shop" name="shop_id">
+            {% for shop in shops %}
+              <option value="{{ shop.id }}">{{ shop.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-row">
+          <label for="export-format">{% trans "Формат экспорта" %}:</label>
+          <select id="export-format" name="format">
+            <option value="yaml">YAML</option>
+            <option value="csv">CSV</option>
+          </select>
+        </div>
+        <div class="button-row">
+          <button type="submit" class="default">{% trans "Экспортировать" %}</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div style="margin-top: 20px;">
+    <a href="{% url 'admin:admin-dashboard' %}" class="button">
+      {% trans "Вернуться на панель управления" %}
+    </a>
+  </div>
+{% endblock %}

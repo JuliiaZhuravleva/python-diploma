@@ -196,3 +196,29 @@ LOGGING = {
         },
     },
 }
+
+# Настройка шаблонов
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [
+            # Добавляем путь для поиска наших шаблонов
+            BASE_DIR / 'backend' / 'templates',
+        ],
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'context_processors': [
+                'django.template.context_processors.debug',
+                'django.template.context_processors.request',
+                'django.contrib.auth.context_processors.auth',
+                'django.contrib.messages.context_processors.messages',
+            ],
+        },
+    },
+]
+
+# Настройки сессии
+SESSION_ENGINE = 'django.contrib.sessions.backends.db'
+SESSION_COOKIE_AGE = 86400  # 1 день в секундах
+SESSION_COOKIE_SECURE = False  # Установите True в production
+SESSION_COOKIE_HTTPONLY = True

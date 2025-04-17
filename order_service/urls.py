@@ -15,9 +15,56 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
+from django.http import HttpResponse
 from django.urls import path, include
+from django.conf import settings
+from django.conf.urls.static import static
+
+from backend.admin_site import admin_site
+
+def index(request):
+    html = '''
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Система автоматизации закупок</title>
+        <style>
+            body { font-family: Arial, sans-serif; margin: 0; padding: 20px; text-align: center; }
+            .container { max-width: 800px; margin: 0 auto; }
+            h1 { color: #333; }
+            .links { margin-top: 40px; }
+            .button { 
+                display: inline-block; 
+                padding: 10px 20px; 
+                margin: 10px;
+                background-color: #4CAF50; 
+                color: white; 
+                text-decoration: none; 
+                border-radius: 4px;
+            }
+            .button.admin { background-color: #2196F3; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>Система автоматизации закупок для розничной сети</h1>
+            <p>Добро пожаловать в систему управления заказами и закупками.</p>
+
+            <div class="links">
+                <a href="/admin/" class="button admin">Панель администратора</a>
+                <a href="/api/v1/" class="button">API документация</a>
+            </div>
+        </div>
+    </body>
+    </html>
+    '''
+    return HttpResponse(html)
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
+    path('', index, name='index'),
+    path('admin/', admin_site.urls),
     path('api/v1/', include('backend.api.urls', namespace='api')),
 ]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -9,6 +9,10 @@ from backend.api.views.user_views import (
     PasswordResetRequestView, PasswordResetConfirmView, ContactViewSet
 )
 from backend.api.views.shop_views import ShopView, CategoryView
+from backend.api.views.admin_views import AdminOrdersView, AdminOrderDetailView
+from backend.api.views.export_views import ExportProductsView
+from backend.api.views.admin_stats_views import AdminStatsView, AdminCategoriesStatsView
+from backend.api.views.admin_user_views import AdminUsersView, AdminUserDetailView
 from backend.api.views import TestAuthView
 
 app_name = 'api'
@@ -41,4 +45,17 @@ urlpatterns = [
     path('partner/update', PartnerUpdateView.as_view(), name='partner-update'),
     path('partner/state', PartnerStateView.as_view(), name='partner-state'),
     path('partner/orders', PartnerOrdersView.as_view(), name='partner-orders'),
+
+    # URL для администратора
+    path('admin/orders', AdminOrdersView.as_view(), name='admin-orders'),
+    path('admin/orders/<int:pk>', AdminOrderDetailView.as_view(), name='admin-order-detail'),
+    path('admin/users', AdminUsersView.as_view(), name='admin-users'),
+    path('admin/users/<int:pk>', AdminUserDetailView.as_view(), name='admin-user-detail'),
+
+    # URL для экспорта товаров
+    path('partner/export', ExportProductsView.as_view(), name='partner-export'),
+
+    # URL для статистики
+    path('admin/stats', AdminStatsView.as_view(), name='admin-stats'),
+    path('admin/stats/categories', AdminCategoriesStatsView.as_view(), name='admin-categories-stats')
 ]

@@ -399,5 +399,7 @@ pyrightconfig.json
 # PyCharm
 .idea/
 
+# AI tools
 .windsurfrules
 /show_files.sh
+/project_overview.md
