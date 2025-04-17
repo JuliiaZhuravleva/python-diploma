@@ -1,0 +1,21 @@
+id,category_id,name
+1,1,Смартфон Samsung Galaxy S23
+2,1,Смартфон Apple iPhone 15
+3,1,Смартфон Xiaomi Redmi Note 12
+4,1,Смартфон Google Pixel 7
+5,1,Смартфон Honor 90
+6,2,Планшет Apple iPad Pro 11
+7,2,Планшет Samsung Galaxy Tab S9
+8,2,Планшет Lenovo Tab P11
+9,3,Ноутбук Apple MacBook Air
+10,3,Ноутбук Lenovo IdeaPad 3
+11,3,Ноутбук HP Pavilion 15
+12,3,Ноутбук Acer Aspire 3
+13,4,Телевизор Samsung QE55S95B
+14,4,Телевизор LG OLED65C3
+15,4,Телевизор Sony XR-55A80L
+16,5,Наушники Apple AirPods Pro 2
+17,5,Наушники Sony WH-1000XM5
+18,5,Колонка JBL Charge 5
+19,6,Фотоаппарат Canon EOS R10
+20,6,Фотоаппарат Sony Alpha A7 IV

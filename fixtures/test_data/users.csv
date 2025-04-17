@@ -1,0 +1,11 @@
+email,password,first_name,last_name,company,position,type,is_active
+buyer1@example.com,Strong123!,Иван,Петров,ООО Пример,Менеджер закупок,buyer,1
+buyer2@example.com,Strong123!,Мария,Иванова,ИП Иванова,Директор,buyer,1
+buyer3@example.com,Strong123!,Алексей,Смирнов,ООО Технопарк,Логист,buyer,1
+buyer4@example.com,Strong123!,Ольга,Козлова,ЗАО Стрела,Руководитель отдела,buyer,1
+buyer5@example.com,Strong123!,Дмитрий,Соколов,ООО МегаТрейд,Закупщик,buyer,1
+shop1@example.com,Strong123!,Магазин,Электроника,ООО Электроника,Администратор,shop,1
+shop2@example.com,Strong123!,Магазин,Техника,ООО Техноград,Администратор,shop,1
+shop3@example.com,Strong123!,Магазин,Компьютеры,ИП Компьютерный мир,Администратор,shop,1
+shop4@example.com,Strong123!,Магазин,Гаджеты,ООО Цифровые решения,Администратор,shop,1
+inactive1@example.com,Strong123!,Неактивный,Пользователь,Тест,Тестировщик,buyer,0
