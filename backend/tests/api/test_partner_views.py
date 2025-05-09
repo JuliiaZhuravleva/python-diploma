@@ -44,16 +44,16 @@ class PartnerUpdateViewTest(TestCase):
             state=True
         )
 
-    @patch('backend.services.import_service.ImportService.import_shop_data')
-    def test_update_price_list_success(self, mock_import_shop_data):
+    @patch('backend.tasks.import_shop_data_task.delay')
+    def test_update_price_list_success(self, mock_import_shop_data_task):
         """
         Тестирование успешного обновления прайс-листа.
         """
-        # Настройка мока
-        mock_import_shop_data.return_value = {
-            "status": True,
-            "message": "Импорт успешно завершен. Импортировано категорий: 3. Импортировано товаров: 10, параметров: 25"
-        }
+        # Создаем Mock-объект для результата задачи вместо словаря
+        from unittest.mock import MagicMock
+        task_result = MagicMock()
+        task_result.id = 'test-task-id'
+        mock_import_shop_data_task.return_value = task_result
 
         # Аутентификация как магазин
         self.client.force_authenticate(user=self.shop_user)
@@ -68,10 +68,15 @@ class PartnerUpdateViewTest(TestCase):
         # Проверка ответа
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.data['status'])
-        self.assertIn('Импорт успешно завершен', response.data['message'])
+
+        # Проверяем новое сообщение об асинхронной обработке
+        self.assertIn('Импорт данных запущен асинхронно', response.data['message'])
+
+        # Проверяем, что есть task_id в ответе
+        self.assertIn('task_id', response.data)
 
         # Проверка вызова сервиса
-        mock_import_shop_data.assert_called_once_with('https://example.com/shop1.yaml', self.shop_user.id)
+        mock_import_shop_data_task.assert_called_once_with('https://example.com/shop1.yaml', self.shop_user.id)
 
     def test_update_price_list_unauthorized(self):
         """

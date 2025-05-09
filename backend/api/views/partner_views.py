@@ -6,6 +6,8 @@ from rest_framework import status
 from backend.api.serializers import OrderSerializer, OrderItemSerializer, ContactSerializer
 from backend.models import Shop, Order
 from backend.services.import_service import ImportService
+from backend.tasks import import_shop_data_task
+
 
 
 class PartnerUpdateView(APIView):
@@ -38,16 +40,14 @@ class PartnerUpdateView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Импортируем данные магазина
-        result = ImportService.import_shop_data(url, request.user.id)
+        # Запуск асинхронной задачи для импорта данных
+        task = import_shop_data_task.delay(url, request.user.id)
 
-        if result['status']:
-            return Response({"status": True, "message": result['message']})
-        else:
-            return Response(
-                {"status": False, "error": result['error']},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        return Response({
+            "status": True,
+            "message": "Импорт данных запущен асинхронно. Результат будет доступен позже.",
+            "task_id": task.id
+        })
 
 
 class PartnerStateView(APIView):

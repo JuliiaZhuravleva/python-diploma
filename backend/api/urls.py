@@ -1,6 +1,7 @@
 from django.urls import path
 
 from backend.api.views.basket_views import BasketView
+from backend.api.views.celery_views import TaskStatusView
 from backend.api.views.order_views import OrderView, OrderDetailView
 from backend.api.views.partner_views import PartnerUpdateView, PartnerStateView, PartnerOrdersView
 from backend.api.views.product_views import ProductView, ProductDetailView
@@ -41,4 +42,7 @@ urlpatterns = [
     path('partner/update', PartnerUpdateView.as_view(), name='partner-update'),
     path('partner/state', PartnerStateView.as_view(), name='partner-state'),
     path('partner/orders', PartnerOrdersView.as_view(), name='partner-orders'),
+
+    # URL для Celery
+    path('task/<str:task_id>', TaskStatusView.as_view(), name='task-status'),
 ]

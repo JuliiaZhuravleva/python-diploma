@@ -22,3 +22,6 @@ wcwidth==0.2.13
 
 django-rest-passwordreset~=1.5.0
 requests~=2.32.3
+
+celery>=5.4.0
+redis>=5.0.0

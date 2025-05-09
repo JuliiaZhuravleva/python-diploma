@@ -4,8 +4,10 @@ from rest_framework import status, permissions
 from django.db import transaction
 from django.core.mail import send_mail
 from django.conf import settings
+
 from backend.models import Order, Contact, OrderItem, Shop
 from backend.api.serializers import OrderSerializer
+from backend.tasks import send_order_confirmation_email
 
 
 class OrderView(APIView):
@@ -127,8 +129,8 @@ class OrderView(APIView):
             order.contact = contact
             order.save()
 
-            # Отправляем email с подтверждением заказа
-            self.send_order_confirmation(order)
+            # Запуск асинхронной задачи для отправки email
+            send_order_confirmation_email.delay(order.id)
 
         # Получаем обновленные данные заказа
         order = Order.objects.filter(id=order.id).prefetch_related(

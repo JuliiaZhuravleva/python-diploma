@@ -13,6 +13,7 @@ from backend.api.serializers import (
     ConfirmEmailSerializer, ContactSerializer,
     PasswordResetRequestSerializer, PasswordResetConfirmSerializer
 )
+from backend.tasks import send_confirmation_email, send_password_reset_email
 
 from . import ApiResponse
 
@@ -36,15 +37,8 @@ class UserRegisterView(APIView):
                 # Создаем токен для подтверждения email
                 token, _ = ConfirmEmailToken.objects.get_or_create(user=user)
 
-                # Отправляем email с токеном
-                send_mail(
-                    subject='Подтверждение регистрации',
-                    message=f'Для подтверждения регистрации используйте токен: {token.key}\n'
-                            f'Email: {user.email}',
-                    from_email=settings.DEFAULT_FROM_EMAIL,
-                    recipient_list=[user.email],
-                    fail_silently=False,
-                )
+                # Запуск асинхронной задачи для отправки email
+                send_confirmation_email.delay(user.id, token.key)
 
                 return Response({
                     'status': True,
@@ -155,15 +149,8 @@ class PasswordResetRequestView(APIView):
             # Создаем токен для сброса пароля
             token, _ = ConfirmEmailToken.objects.get_or_create(user=user)
 
-            # Отправляем email с токеном
-            send_mail(
-                subject='Сброс пароля',
-                message=f'Для сброса пароля перейдите по ссылке: \n'
-                        f'http://localhost:8000/api/v1/user/password_reset/confirm?token={token.key}&email={user.email}',
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[user.email],
-                fail_silently=False,
-            )
+            # Запуск асинхронной задачи для отправки email
+            send_password_reset_email.delay(user.id, token.key)
 
             return Response({
                 'message': 'Инструкции по сбросу пароля отправлены на ваш email.'

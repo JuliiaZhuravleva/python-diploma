@@ -18,6 +18,8 @@
 - Python 3.10+
 - Django & Django REST Framework
 - SQLite (в разработке) / PostgreSQL (опционально для продакшена)
+- Redis
+- Celery
 - JWT аутентификация
 
 ## Установка и запуск
@@ -142,6 +144,18 @@
 
 ```bash
   DEBUG_SQL=True
+```
+
+## Запуск Redis для Celery
+
+Проект использует Redis в качестве брокера сообщений для Celery. Для локальной разработки и тестирования вы можете запустить Redis с помощью Docker:
+
+```bash
+# Запуск Redis
+docker compose up -d
+
+# Остановка Redis
+docker compose down
 ```
 
 ## Тестирование API
