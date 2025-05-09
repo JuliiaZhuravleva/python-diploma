@@ -25,3 +25,5 @@ requests~=2.32.3
 
 celery>=5.4.0
 redis>=5.0.0
+
+coverage>=7.2.0

@@ -1,0 +1,21 @@
+[run]
+source = backend
+omit =
+    */tests/*
+    */migrations/*
+    */management/commands/*
+    backend/apps.py
+    backend/__init__.py
+    backend/views.py
+
+[report]
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    raise NotImplementedError
+    if __name__ == .__main__.:
+    pass
+    raise ImportError
+
+[html]
+directory = htmlcov/
