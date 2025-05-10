@@ -17,6 +17,18 @@ jobs:
           - 6379:6379
         options: --health-cmd="redis-cli ping" --health-interval=10s --health-timeout=5s --health-retries=3
 
+    env:
+      SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
+      DEBUG: ${{ secrets.DJANGO_DEBUG }}
+      DEBUG_SQL: ${{ secrets.DJANGO_DEBUG_SQL }}
+      ALLOWED_HOSTS: ${{ secrets.DJANGO_ALLOWED_HOSTS }}
+      DB_ENGINE: ${{ secrets.DJANGO_DB_ENGINE }}
+      DB_NAME: ${{ secrets.DJANGO_DB_NAME }}
+      EMAIL_BACKEND: ${{ secrets.DJANGO_EMAIL_BACKEND }}
+      DEFAULT_FROM_EMAIL: ${{ secrets.DJANGO_DEFAULT_FROM_EMAIL }}
+      CELERY_BROKER_URL: ${{ secrets.DJANGO_CELERY_BROKER_URL }}
+      CELERY_RESULT_BACKEND: ${{ secrets.DJANGO_CELERY_RESULT_BACKEND }}
+
     steps:
     - uses: actions/checkout@v2
 
