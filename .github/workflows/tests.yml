@@ -50,9 +50,10 @@ jobs:
         coverage report
 
     - name: Upload coverage reports to Codecov
-      uses: codecov/codecov-action@v4
+      uses: codecov/codecov-action@v5
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
+        slug: JuliiaZhuravleva/python-diploma
         file: ./coverage.xml
         flags: unittests
         fail_ci_if_error: false
