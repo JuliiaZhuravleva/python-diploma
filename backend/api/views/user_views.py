@@ -17,16 +17,77 @@ from backend.tasks import send_confirmation_email, send_password_reset_email
 
 from . import ApiResponse
 
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample, OpenApiResponse
+from drf_spectacular.types import OpenApiTypes
+
 
 class UserRegisterView(APIView):
     """
-    View для регистрации новых пользователей.
+    Представление для регистрации новых пользователей в системе.
 
-    POST: Создает нового пользователя и отправляет email с токеном подтверждения.
+    Создает нового пользователя на основе предоставленных данных,
+    генерирует токен подтверждения и отправляет его на указанный email.
     """
     permission_classes = [permissions.AllowAny]
 
+    @extend_schema(
+        tags=['Auth'],
+        summary="Регистрация нового пользователя",
+        description="Создает нового пользователя в системе и отправляет email для подтверждения адреса",
+        request=UserRegistrationSerializer,
+        responses={
+            201: OpenApiResponse(
+                description="Пользователь успешно зарегистрирован",
+                examples=[
+                    OpenApiExample(
+                        "SuccessfulRegistration",
+                        value={
+                            "status": True,
+                            "message": "Пользователь успешно зарегистрирован. Проверьте email для подтверждения."
+                        },
+                        status_codes=["201"],
+                    )
+                ]
+            ),
+            400: OpenApiResponse(
+                description="Ошибка валидации данных",
+                examples=[
+                    OpenApiExample(
+                        "ValidationError",
+                        value={
+                            "status": False,
+                            "errors": {
+                                "email": ["Пользователь с таким email уже существует."],
+                                "password": ["Пароль должен содержать не менее 8 символов."]
+                            }
+                        },
+                        status_codes=["400"],
+                    )
+                ]
+            )
+        },
+        examples=[
+            OpenApiExample(
+                name="RegisterUserExample",
+                request_only=True,
+                value={
+                    "email": "user@example.com",
+                    "password": "securePassword123",
+                    "first_name": "Иван",
+                    "last_name": "Иванов",
+                    "company": "ООО Компания",
+                    "position": "Менеджер"
+                }
+            )
+        ]
+    )
     def post(self, request):
+        """
+        Регистрирует нового пользователя.
+
+        Принимает данные пользователя, создает новую учетную запись,
+        генерирует токен подтверждения и отправляет его на указанный email.
+        """
         serializer = UserRegistrationSerializer(data=request.data)
 
         if serializer.is_valid():
@@ -53,13 +114,61 @@ class UserRegisterView(APIView):
 
 class ConfirmEmailView(APIView):
     """
-    View для подтверждения email пользователя.
+    Представление для подтверждения email пользователя.
 
-    POST: Активирует пользователя после подтверждения email.
+    Активирует учетную запись пользователя после проверки токена подтверждения.
     """
     permission_classes = [permissions.AllowAny]
 
+    @extend_schema(
+        tags=['Auth'],
+        summary="Подтверждение email пользователя",
+        description="Активирует учетную запись пользователя после проверки токена подтверждения",
+        request=ConfirmEmailSerializer,
+        responses={
+            200: OpenApiResponse(
+                description="Email успешно подтвержден",
+                examples=[
+                    OpenApiExample(
+                        "SuccessfulConfirmation",
+                        value={
+                            "message": "Email успешно подтвержден. Теперь вы можете войти в систему."
+                        },
+                        status_codes=["200"],
+                    )
+                ]
+            ),
+            400: OpenApiResponse(
+                description="Ошибка валидации данных",
+                examples=[
+                    OpenApiExample(
+                        "ValidationError",
+                        value={
+                            "email": ["Данный email не найден."],
+                            "token": ["Неверный токен подтверждения."]
+                        },
+                        status_codes=["400"],
+                    )
+                ]
+            )
+        },
+        examples=[
+            OpenApiExample(
+                name="ConfirmEmailExample",
+                request_only=True,
+                value={
+                    "email": "user@example.com",
+                    "token": "a1b2c3d4e5f6"
+                }
+            )
+        ]
+    )
     def post(self, request):
+        """
+        Подтверждает email пользователя.
+
+        Проверяет токен подтверждения и активирует учетную запись пользователя.
+        """
         serializer = ConfirmEmailSerializer(data=request.data)
 
         if serializer.is_valid():

@@ -46,6 +46,8 @@ INSTALLED_APPS = [
     # Сторонние библиотеки
     'rest_framework',
     'rest_framework.authtoken',
+    'drf_spectacular',
+    'drf_spectacular_sidecar',
 
     # Локальные приложения
     'backend',
@@ -120,6 +122,7 @@ REST_FRAMEWORK = {
         'rest_framework.parsers.MultiPartParser',
     ],
     'EXCEPTION_HANDLER': 'rest_framework.views.exception_handler',
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
 
 # Password validation
@@ -204,3 +207,43 @@ CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = TIME_ZONE
+
+# Spectacular settings
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Сервис автоматизации закупок API',
+    'DESCRIPTION': 'API для автоматизации закупок в розничной сети',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,  # Исключаем схему из списка эндпоинтов
+    # Настройки для UI
+    'SWAGGER_UI_DIST': 'SIDECAR',  # Используем локальную копию Swagger UI из sidecar
+    'SWAGGER_UI_FAVICON_HREF': 'SIDECAR',
+    'REDOC_DIST': 'SIDECAR',  # Используем локальную копию Redoc из sidecar
+    # Дополнительные настройки Swagger UI
+    'SWAGGER_UI_SETTINGS': {
+        'deepLinking': True,  # Позволяет создавать ссылки на специфичные операции
+        'persistAuthorization': True,  # Сохраняет информацию об авторизации между обновлениями страницы
+        'displayOperationId': False,  # Не показываем operation_id в UI
+        'defaultModelsExpandDepth': 3,  # Глубина развертывания моделей по умолчанию
+        'defaultModelExpandDepth': 3,  # Глубина развертывания моделей по умолчанию
+        'displayRequestDuration': True,  # Показываем продолжительность запроса
+        'docExpansion': 'list',  # Начальное состояние документации (list, full, none)
+    },
+    # Группировка по тегам
+    'TAGS': [
+        {'name': 'Auth', 'description': 'Операции аутентификации и управления пользователями'},
+        {'name': 'Shop', 'description': 'Операции для работы с магазинами, товарами и категориями'},
+        {'name': 'Orders', 'description': 'Операции для работы с заказами и корзиной'},
+        {'name': 'Partner', 'description': 'Операции для партнеров (поставщиков)'},
+    ],
+    # Предобработка списка эндпоинтов
+    'PREPROCESSING_HOOKS': [],
+    # Постобработка схемы
+    'POSTPROCESSING_HOOKS': [
+        'drf_spectacular.hooks.postprocess_schema_enums'
+    ],
+    # Компонентная модель
+    'COMPONENT_SPLIT_REQUEST': True,  # Разделяем компоненты на запрос и ответ
+    'COMPONENT_SPLIT_PATCH': True,  # Отдельные компоненты для PATCH запросов
+    # Сортировка операций
+    'SORT_OPERATIONS': True,
+}

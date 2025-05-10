@@ -324,3 +324,64 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
             return attrs
         except User.DoesNotExist:
             raise serializers.ValidationError({"email": "Пользователь с таким email не существует"})
+
+
+# Для отдельного элемента в массиве items при добавлении товаров в корзину
+class BasketItemAddSerializer(serializers.Serializer):
+    """
+    Сериализатор для отдельной позиции при добавлении товаров в корзину.
+    """
+    product_info = serializers.IntegerField(
+        help_text="ID товара для добавления в корзину"
+    )
+    quantity = serializers.IntegerField(
+        help_text="Количество товара",
+        min_value=1
+    )
+
+
+# Для запроса POST на добавление товаров в корзину
+class BasketAddSerializer(serializers.Serializer):
+    """
+    Сериализатор для добавления товаров в корзину.
+
+    Ожидает массив товаров с указанием ID и количества.
+    """
+    items = BasketItemAddSerializer(many=True, help_text="Список товаров для добавления в корзину")
+
+
+# Для отдельного элемента в массиве items при обновлении корзины
+class BasketItemUpdateSerializer(serializers.Serializer):
+    """
+    Сериализатор для отдельной позиции при обновлении корзины.
+    """
+    id = serializers.IntegerField(
+        help_text="ID позиции в корзине"
+    )
+    quantity = serializers.IntegerField(
+        help_text="Новое количество товара",
+        min_value=1
+    )
+
+
+# Для запроса PUT на обновление корзины
+class BasketUpdateSerializer(serializers.Serializer):
+    """
+    Сериализатор для обновления количества товаров в корзине.
+
+    Ожидает массив позиций с указанием ID и нового количества.
+    """
+    items = BasketItemUpdateSerializer(many=True, help_text="Список позиций для обновления")
+
+
+# Для запроса DELETE на удаление товаров из корзины
+class BasketDeleteSerializer(serializers.Serializer):
+    """
+    Сериализатор для удаления товаров из корзины.
+
+    Принимает строку с ID позиций, разделенных запятыми через form-data.
+    """
+    items = serializers.CharField(
+        required=True,
+        help_text="Строка с ID позиций для удаления, разделенных запятыми (например, '1,2,3')"
+    )

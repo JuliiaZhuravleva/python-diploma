@@ -2,20 +2,28 @@ import json
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions
+from rest_framework.parsers import FormParser, MultiPartParser, JSONParser
 from django.db import transaction
 from django.db.models import F
 from backend.models import Order, OrderItem, ProductInfo
-from backend.api.serializers import OrderSerializer, OrderItemSerializer
+from backend.api.serializers import OrderSerializer, OrderItemSerializer, BasketAddSerializer, BasketUpdateSerializer, \
+    BasketDeleteSerializer
+
+# Импорты для drf-spectacular
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample, OpenApiResponse, inline_serializer
+from drf_spectacular.types import OpenApiTypes
+from rest_framework import serializers
 
 
 class BasketView(APIView):
     """
     Представление для работы с корзиной пользователя.
 
-    GET: Получает текущее содержимое корзины пользователя.
-    POST: Добавляет товары в корзину.
-    PUT: Обновляет количество товаров в корзине.
-    DELETE: Удаляет товары из корзины.
+    Позволяет выполнять следующие операции:
+    - Получение текущего содержимого корзины
+    - Добавление товаров в корзину
+    - Обновление количества товаров в корзине
+    - Удаление товаров из корзины
     """
     permission_classes = [permissions.IsAuthenticated]
 
@@ -59,6 +67,12 @@ class BasketView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+    @extend_schema(
+        tags=['Orders'],
+        summary="Получить корзину",
+        description="Возвращает информацию о текущей корзине пользователя и её содержимом",
+        responses={200: OrderSerializer}
+    )
     def get(self, request):
         """
         Получение содержимого корзины пользователя.
@@ -81,6 +95,13 @@ class BasketView(APIView):
         serializer = OrderSerializer(basket)
         return Response(serializer.data)
 
+    @extend_schema(
+        tags=['Orders'],
+        summary="Добавить товары в корзину",
+        description="Добавляет товары в корзину пользователя",
+        request=BasketAddSerializer,
+        responses={201: OrderSerializer}
+    )
     def post(self, request):
         """
         Добавление товаров в корзину.
@@ -177,6 +198,13 @@ class BasketView(APIView):
             status=status.HTTP_201_CREATED
         )
 
+    @extend_schema(
+        tags=['Orders'],
+        summary="Обновить товары в корзине",
+        description="Обновляет количество товаров в корзине пользователя",
+        request=BasketUpdateSerializer,
+        responses={200: OrderSerializer}
+    )
     def put(self, request):
         """
         Обновление количества товаров в корзине.
@@ -252,6 +280,25 @@ class BasketView(APIView):
             status=status.HTTP_200_OK
         )
 
+    @extend_schema(
+        tags=['Orders'],
+        summary="Удалить товары из корзины",
+        description="Удаляет выбранные товары из корзины пользователя через form-data",
+        request={
+            "application/json": BasketDeleteSerializer,
+            "multipart/form-data": BasketDeleteSerializer,
+        },
+        examples=[
+            OpenApiExample(
+                "Delete as form",
+                summary="multipart/form-data",
+                value={"items": "1,2,3"},
+                media_type="multipart/form-data",
+                request_only=True,
+            ),
+        ],
+        responses={200: OrderSerializer},
+    )
     def delete(self, request):
         """
         Удаление товаров из корзины.
