@@ -284,10 +284,15 @@ class BasketView(APIView):
         tags=['Orders'],
         summary="Удалить товары из корзины",
         description="Удаляет выбранные товары из корзины пользователя через form-data",
-        request={
-            "application/json": BasketDeleteSerializer,
-            "multipart/form-data": BasketDeleteSerializer,
-        },
+        parameters=[
+            OpenApiParameter(
+                name='items',
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description='Список ID товаров для удаления, разделенных запятыми',
+                required=True,
+            ),
+        ],
         examples=[
             OpenApiExample(
                 "Delete as form",
@@ -308,16 +313,21 @@ class BasketView(APIView):
             "items": "1,2,3"  # Строка с ID позиций в корзине через запятую
         }
         """
-        items_str = request.data.get('items')
+        # 1. Пробуем получить из query
+        items_str = request.query_params.get('items')
+
+        # 2. Если нет — пробуем из тела (json/form-data)
+        if not items_str:
+            items_str = request.data.get('items')
+
         if not items_str:
             return Response(
                 {"status": False, "error": "Не указаны товары для удаления"},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Преобразуем строку с id в список
         try:
-            items_ids = [int(item) for item in items_str.split(',')]
+            items_ids = [int(item.strip()) for item in items_str.split(',') if item.strip()]
         except ValueError:
             return Response(
                 {"status": False, "error": "Неверный формат списка ID"},
