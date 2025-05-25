@@ -57,7 +57,11 @@ def auth_endpoint(operation, summary, description, **kwargs):
     examples = get_examples_for_operation(operation, 'auth')
 
     # Стандартные ответы для auth endpoints
-    responses = get_responses_for_endpoint(include_auth=False)
+    custom_responses = kwargs.pop('responses', {})
+    default_responses = get_responses_for_endpoint(include_auth=False)
+
+    # Объединяем стандартные и пользовательские ответы
+    responses = {**default_responses, **custom_responses}
 
     # Специфичные настройки для разных операций
     operation_config = {
@@ -138,17 +142,23 @@ def crud_endpoint(operation, resource, summary=None, description=None, **kwargs)
     # Настройки для разных операций
     include_auth = kwargs.pop('requires_auth', True)
 
+    # Извлекаем responses из kwargs
+    custom_responses = kwargs.pop('responses', {})
+
     # Дополнительные ответы для разных операций
     additional_responses = {}
     if operation in ['read', 'update', 'delete']:
         additional_responses[404] = STANDARD_RESPONSES['not_found']
+
+    # Объединяем все responses
+    responses = {**additional_responses, **custom_responses}
 
     return api_endpoint(
         tags=[tag],
         summary=summary,
         description=description,
         include_auth=include_auth,
-        responses=additional_responses,
+        responses=responses,
         **kwargs
     )
 

@@ -15,9 +15,17 @@ from backend.api.serializers import (
 )
 from backend.tasks import send_confirmation_email, send_password_reset_email
 
-from . import ApiResponse
-
-from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample, OpenApiResponse
+# Импорты новой системы документации
+from backend.api.docs import (
+    auth_endpoint,
+    crud_endpoint,
+    api_endpoint,
+    get_success_response,
+    get_error_response,
+    AUTH_EXAMPLES,
+    ORDER_EXAMPLES
+)
+from drf_spectacular.utils import OpenApiParameter, OpenApiExample
 from drf_spectacular.types import OpenApiTypes
 
 
@@ -30,56 +38,17 @@ class UserRegisterView(APIView):
     """
     permission_classes = [permissions.AllowAny]
 
-    @extend_schema(
-        tags=['Auth'],
+    @auth_endpoint(
+        operation='register',
         summary="Регистрация нового пользователя",
         description="Создает нового пользователя в системе и отправляет email для подтверждения адреса",
         request=UserRegistrationSerializer,
         responses={
-            201: OpenApiResponse(
-                description="Пользователь успешно зарегистрирован",
-                examples=[
-                    OpenApiExample(
-                        "SuccessfulRegistration",
-                        value={
-                            "status": True,
-                            "message": "Пользователь успешно зарегистрирован. Проверьте email для подтверждения."
-                        },
-                        status_codes=["201"],
-                    )
-                ]
-            ),
-            400: OpenApiResponse(
-                description="Ошибка валидации данных",
-                examples=[
-                    OpenApiExample(
-                        "ValidationError",
-                        value={
-                            "status": False,
-                            "errors": {
-                                "email": ["Пользователь с таким email уже существует."],
-                                "password": ["Пароль должен содержать не менее 8 символов."]
-                            }
-                        },
-                        status_codes=["400"],
-                    )
-                ]
+            201: get_success_response(
+                "Пользователь успешно зарегистрирован. Проверьте email для подтверждения.",
+                with_data=False
             )
-        },
-        examples=[
-            OpenApiExample(
-                name="RegisterUserExample",
-                request_only=True,
-                value={
-                    "email": "user@example.com",
-                    "password": "securePassword123",
-                    "first_name": "Иван",
-                    "last_name": "Иванов",
-                    "company": "ООО Компания",
-                    "position": "Менеджер"
-                }
-            )
-        ]
+        }
     )
     def post(self, request):
         """
@@ -120,48 +89,14 @@ class ConfirmEmailView(APIView):
     """
     permission_classes = [permissions.AllowAny]
 
-    @extend_schema(
-        tags=['Auth'],
+    @auth_endpoint(
+        operation='confirm_email',
         summary="Подтверждение email пользователя",
         description="Активирует учетную запись пользователя после проверки токена подтверждения",
         request=ConfirmEmailSerializer,
         responses={
-            200: OpenApiResponse(
-                description="Email успешно подтвержден",
-                examples=[
-                    OpenApiExample(
-                        "SuccessfulConfirmation",
-                        value={
-                            "message": "Email успешно подтвержден. Теперь вы можете войти в систему."
-                        },
-                        status_codes=["200"],
-                    )
-                ]
-            ),
-            400: OpenApiResponse(
-                description="Ошибка валидации данных",
-                examples=[
-                    OpenApiExample(
-                        "ValidationError",
-                        value={
-                            "email": ["Данный email не найден."],
-                            "token": ["Неверный токен подтверждения."]
-                        },
-                        status_codes=["400"],
-                    )
-                ]
-            )
-        },
-        examples=[
-            OpenApiExample(
-                name="ConfirmEmailExample",
-                request_only=True,
-                value={
-                    "email": "user@example.com",
-                    "token": "a1b2c3d4e5f6"
-                }
-            )
-        ]
+            200: get_success_response("Email успешно подтвержден. Теперь вы можете войти в систему.")
+        }
     )
     def post(self, request):
         """
@@ -191,13 +126,32 @@ class ConfirmEmailView(APIView):
 
 class UserLoginView(APIView):
     """
-    View для входа пользователя в систему.
+    Представление для входа пользователя в систему.
 
-    POST: Аутентифицирует пользователя и возвращает токен.
+    Аутентифицирует пользователя и возвращает токен доступа.
     """
     permission_classes = [permissions.AllowAny]
 
+    @auth_endpoint(
+        operation='login',
+        summary="Вход пользователя в систему",
+        description="Аутентифицирует пользователя по email и паролю, возвращает токен доступа",
+        request=UserLoginSerializer,
+        responses={
+            200: api_endpoint(
+                tags=['Auth'],
+                summary="Успешная авторизация",
+                description="Возвращает токен и данные пользователя",
+                examples=[AUTH_EXAMPLES['login_success']]
+            )
+        }
+    )
     def post(self, request):
+        """
+        Выполняет вход пользователя в систему.
+
+        Проверяет учетные данные и возвращает токен для дальнейшей авторизации.
+        """
         serializer = UserLoginSerializer(data=request.data)
 
         if serializer.is_valid():
@@ -214,18 +168,36 @@ class UserLoginView(APIView):
 
 class UserDetailsView(APIView):
     """
-    View для работы с данными пользователя.
+    Представление для работы с данными пользователя.
 
-    GET: Возвращает информацию о текущем пользователе.
-    POST: Обновляет информацию пользователя.
+    Позволяет получать и обновлять информацию о текущем пользователе.
     """
     permission_classes = [permissions.IsAuthenticated]
 
+    @crud_endpoint(
+        operation='read',
+        resource='user',
+        summary="Получить данные пользователя",
+        description="Возвращает информацию о текущем авторизованном пользователе",
+        responses={200: UserSerializer}
+    )
     def get(self, request):
+        """Получение данных текущего пользователя."""
         serializer = UserSerializer(request.user)
         return Response(serializer.data)
 
+    @crud_endpoint(
+        operation='update',
+        resource='user',
+        summary="Обновить данные пользователя",
+        description="Обновляет информацию о текущем пользователе. Поддерживает частичное обновление.",
+        request=UserSerializer,
+        responses={
+            200: get_success_response("Данные пользователя обновлены", with_data=True)
+        }
+    )
     def post(self, request):
+        """Обновление данных пользователя."""
         serializer = UserSerializer(request.user, data=request.data, partial=True)
 
         if serializer.is_valid():
@@ -242,13 +214,27 @@ class UserDetailsView(APIView):
 
 class PasswordResetRequestView(APIView):
     """
-    View для запроса сброса пароля.
+    Представление для запроса сброса пароля.
 
-    POST: Отправляет email с токеном для сброса пароля.
+    Отправляет email с токеном для сброса пароля.
     """
     permission_classes = [permissions.AllowAny]
 
+    @auth_endpoint(
+        operation='reset_password',
+        summary="Запрос сброса пароля",
+        description="Отправляет email с инструкциями для сброса пароля",
+        request=PasswordResetRequestSerializer,
+        responses={
+            200: get_success_response("Инструкции по сбросу пароля отправлены на ваш email")
+        }
+    )
     def post(self, request):
+        """
+        Обрабатывает запрос на сброс пароля.
+
+        Создает токен сброса и отправляет его на email пользователя.
+        """
         serializer = PasswordResetRequestSerializer(data=request.data)
 
         if serializer.is_valid():
@@ -270,13 +256,27 @@ class PasswordResetRequestView(APIView):
 
 class PasswordResetConfirmView(APIView):
     """
-    View для подтверждения сброса пароля.
+    Представление для подтверждения сброса пароля.
 
-    POST: Устанавливает новый пароль пользователю.
+    Устанавливает новый пароль пользователю.
     """
     permission_classes = [permissions.AllowAny]
 
+    @auth_endpoint(
+        operation='confirm_reset',
+        summary="Подтверждение сброса пароля",
+        description="Устанавливает новый пароль пользователю после проверки токена",
+        request=PasswordResetConfirmSerializer,
+        responses={
+            200: get_success_response("Пароль успешно изменен. Теперь вы можете войти в систему с новым паролем.")
+        }
+    )
     def post(self, request):
+        """
+        Подтверждает сброс пароля и устанавливает новый.
+
+        Проверяет токен и устанавливает новый пароль пользователю.
+        """
         serializer = PasswordResetConfirmSerializer(data=request.data)
 
         if serializer.is_valid():
@@ -303,21 +303,38 @@ class PasswordResetConfirmView(APIView):
 
 class ContactViewSet(APIView):
     """
-    View для работы с контактной информацией пользователя.
+    Представление для работы с контактной информацией пользователя.
 
-    GET: Возвращает список контактов пользователя.
-    POST: Создает новый контакт.
-    PUT: Обновляет существующий контакт.
-    DELETE: Мягко удаляет контакты.
+    Позволяет управлять адресами доставки и контактными данными.
     """
     permission_classes = [permissions.IsAuthenticated]
 
+    @crud_endpoint(
+        operation='list',
+        resource='contacts',
+        summary="Получить список контактов",
+        description="Возвращает список контактов пользователя",
+        responses={200: ContactSerializer(many=True)}
+    )
     def get(self, request):
+        """Получение списка контактов пользователя."""
         contacts = Contact.objects.filter(user=request.user, is_deleted=False)
         serializer = ContactSerializer(contacts, many=True)
         return Response(serializer.data)
 
+    @crud_endpoint(
+        operation='create',
+        resource='contacts',
+        summary="Создать новый контакт",
+        description="Добавляет новый адрес доставки для пользователя",
+        request=ContactSerializer,
+        responses={
+            201: get_success_response("Контакт успешно создан", with_data=True)
+        },
+        examples=[ORDER_EXAMPLES['contact_create_request']]
+    )
     def post(self, request):
+        """Создание нового контакта."""
         serializer = ContactSerializer(data=request.data)
 
         if serializer.is_valid():
@@ -326,8 +343,20 @@ class ContactViewSet(APIView):
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+    @crud_endpoint(
+        operation='update',
+        resource='contacts',
+        summary="Обновить контакт",
+        description="Обновляет существующий контакт пользователя",
+        request=ContactSerializer,
+        responses={
+            200: get_success_response("Контакт успешно обновлен", with_data=True),
+            404: get_error_response("Контакт не найден", "404")
+        }
+    )
     def put(self, request):
-        # В запросе должно быть указано id контакта для обновления
+        """Обновление существующего контакта."""
+        # В запросе должен быть указан id контакта для обновления
         contact_id = request.data.get('id')
         if not contact_id:
             return Response({'error': 'Не указан ID контакта'}, status=status.HTTP_400_BAD_REQUEST)
@@ -345,9 +374,33 @@ class ContactViewSet(APIView):
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+    @crud_endpoint(
+        operation='delete',
+        resource='contacts',
+        summary="Удалить контакты",
+        description="Мягкое удаление контактов пользователя",
+        parameters=[
+            OpenApiParameter(
+                name='items',
+                type=OpenApiTypes.STR,
+                description='Список ID контактов для удаления, разделенных запятыми',
+                required=True,
+                examples=[
+                    OpenApiExample(
+                        "Удаление нескольких контактов",
+                        value="1,2,3"
+                    )
+                ]
+            )
+        ],
+        responses={
+            200: get_success_response("Контакты успешно удалены"),
+            400: get_error_response("Некорректный формат списка ID")
+        }
+    )
     def delete(self, request):
         """
-        Мягкое удаление контактов (пометка как удаленные).
+        Мягкое удаление контактов (помечает как удаленные).
 
         Ожидаемый формат данных:
         {
