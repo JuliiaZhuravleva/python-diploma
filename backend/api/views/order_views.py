@@ -2,288 +2,183 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions
 from django.db import transaction
-from django.core.mail import send_mail
-from django.conf import settings
+from django.db.models import F, Sum, Prefetch
 
-from backend.models import Order, Contact, OrderItem, Shop
-from backend.api.serializers import OrderSerializer
+from backend.models import Order, OrderItem, Contact
+from backend.api.serializers import OrderSerializer, OrderItemSerializer
 from backend.tasks import send_order_confirmation_email
+
+# Импорты для системы документации
+from backend.api.docs import (
+    crud_endpoint,
+    get_success_response,
+    get_error_response,
+    ORDER_EXAMPLES
+)
 
 
 class OrderView(APIView):
     """
     Представление для работы с заказами пользователя.
 
-    GET: Получает список заказов пользователя.
-    POST: Оформляет заказ из корзины.
+    Позволяет получать список заказов и создавать новые заказы.
     """
     permission_classes = [permissions.IsAuthenticated]
 
+    @crud_endpoint(
+        operation='list',
+        resource='orders',
+        summary="Получить список заказов",
+        description="Возвращает список всех заказов текущего пользователя",
+        responses={200: OrderSerializer(many=True)}
+    )
     def get(self, request):
-        """
-        Получение списка заказов пользователя.
-        """
+        """Получение списка заказов пользователя."""
         orders = Order.objects.filter(
-            user=request.user
+            user=request.user,
         ).exclude(
             state='basket'
         ).prefetch_related(
             'ordered_items__product_info__product',
             'ordered_items__product_info__shop',
-            'ordered_items__product_info__product_parameters__parameter'
-        ).select_related('contact').order_by('-dt')
+            'contact'
+        ).annotate(
+            total_sum=Sum(F('ordered_items__quantity') * F('ordered_items__product_info__price'))
+        ).order_by('-dt')
 
         serializer = OrderSerializer(orders, many=True)
         return Response(serializer.data)
 
-    def post(self, request):
-        """
-        Оформление заказа из корзины.
-
-        Ожидаемый формат данных:
-        {
-            "id": 1,        # ID корзины
-            "contact": 2     # ID контакта для доставки
+    @crud_endpoint(
+        operation='create',
+        resource='orders',
+        summary="Создать заказ",
+        description="Оформляет заказ из корзины с указанным адресом доставки",
+        examples=[ORDER_EXAMPLES['order_create_request']],
+        responses={
+            201: get_success_response("Заказ успешно создан", with_data=True),
+            400: get_error_response("Корзина пуста или не найдена"),
+            404: get_error_response("Контакт не найден")
         }
-        """
-        order_id = request.data.get('id')
+    )
+    def post(self, request):
+        """Создание заказа из корзины."""
         contact_id = request.data.get('contact')
 
-        if not order_id or not contact_id:
-            return Response(
-                {"status": False, "error": "Не указаны обязательные поля (id, contact)"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        if not contact_id:
+            return Response({
+                'status': False,
+                'error': 'Не указан адрес доставки'
+            }, status=status.HTTP_400_BAD_REQUEST)
 
-        # Проверяем наличие корзины
+        # Проверяем существование контакта
         try:
-            order = Order.objects.get(
-                id=order_id,
-                user=request.user,
-                state='basket'
-            )
-        except Order.DoesNotExist:
-            return Response(
-                {"status": False, "error": "Корзина не найдена"},
-                status=status.HTTP_404_NOT_FOUND
-            )
-
-        # Проверяем наличие контакта и что он не помечен как удаленный
-        try:
-            contact = Contact.objects.get(
-                id=contact_id,
-                user=request.user,
-                is_deleted=False  # Проверка, что контакт не удален
-            )
+            contact = Contact.objects.get(id=contact_id, user=request.user)
         except Contact.DoesNotExist:
-            return Response(
-                {"status": False, "error": "Контакт не найден или был удален"},
-                status=status.HTTP_404_NOT_FOUND
-            )
+            return Response({
+                'status': False,
+                'error': 'Контакт не найден'
+            }, status=status.HTTP_404_NOT_FOUND)
 
-        # Оформляем заказ
+        # Получаем корзину
+        try:
+            basket = Order.objects.get(user=request.user, state='basket')
+        except Order.DoesNotExist:
+            return Response({
+                'status': False,
+                'error': 'Корзина не найдена'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        if basket.ordered_items.count() == 0:
+            return Response({
+                'status': False,
+                'error': 'Корзина пуста'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Создаем заказ
         with transaction.atomic():
-            # Сначала проверяем активность всех магазинов
-            # Получаем уникальные магазины из товаров в корзине
-            shop_ids = OrderItem.objects.filter(order=order).values_list(
-                'product_info__shop_id', flat=True
-            ).distinct()
+            basket.contact = contact
+            basket.state = 'new'
+            basket.save()
 
-            # Проверяем активность магазинов одним запросом
-            inactive_shops = Shop.objects.filter(
-                id__in=shop_ids,
-                state=False
-            ).values_list('name', flat=True)
+            # Отправляем email подтверждения
+            send_order_confirmation_email.delay(basket.id)
 
-            if inactive_shops:
-                # Формируем сообщение об ошибке с перечислением неактивных магазинов
-                shops_str = ", ".join(inactive_shops)
-                return Response(
-                    {"status": False,
-                     "error": f"Невозможно оформить заказ, так как следующие магазины не принимают заказы: {shops_str}"},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
-            # Теперь проверяем количество товаров в магазинах
-            order_items = OrderItem.objects.filter(order=order).select_related('product_info')
-
-            for item in order_items:
-                product_info = item.product_info
-
-                # Проверяем, хватает ли товара на складе
-                if product_info.quantity < item.quantity:
-                    return Response(
-                        {"status": False,
-                         "error": f"Недостаточное количество товара {product_info.product.name} в магазине"},
-                        status=status.HTTP_400_BAD_REQUEST
-                    )
-
-            # Вычитаем количество из остатков
-            for item in order_items:
-                product_info = item.product_info
-                product_info.quantity -= item.quantity
-                product_info.save()
-
-            # Меняем статус заказа
-            order.state = 'new'
-            order.contact = contact
-            order.save()
-
-            # Запуск асинхронной задачи для отправки email
-            send_order_confirmation_email.delay(order.id)
-
-        # Получаем обновленные данные заказа
-        order = Order.objects.filter(id=order.id).prefetch_related(
-            'ordered_items__product_info__product',
-            'ordered_items__product_info__shop',
-            'ordered_items__product_info__product_parameters__parameter'
-        ).select_related('contact').first()
-
-        serializer = OrderSerializer(order)
-        return Response(
-            {"status": True, "message": "Заказ успешно оформлен", "data": serializer.data},
-            status=status.HTTP_200_OK
-        )
-
-    def send_order_confirmation(self, order):
-        """
-        Отправка email с подтверждением заказа.
-        """
-        total_sum = order.get_total_cost()
-        items = []
-
-        for item in order.ordered_items.all():
-            items.append(
-                f"- {item.product_info.product.name}: {item.quantity} шт. x {item.product_info.price} руб. "
-                f"= {item.quantity * item.product_info.price} руб."
-            )
-
-        message = f"""
-        Здравствуйте, {order.user.first_name}!
-
-        Ваш заказ №{order.id} от {order.dt.strftime('%d.%m.%Y %H:%M')} успешно оформлен.
-
-        Состав заказа:
-        {"".join(items)}
-
-        Общая сумма заказа: {total_sum} руб.
-
-        Адрес доставки:
-        {order.contact.city}, {order.contact.street}, д. {order.contact.house},
-        {'корп. ' + order.contact.structure if order.contact.structure else ''}
-        {'стр. ' + order.contact.building if order.contact.building else ''}
-        {'кв. ' + order.contact.apartment if order.contact.apartment else ''}
-
-        Телефон для связи: {order.contact.phone}
-
-        Спасибо за заказ!
-        """
-
-        send_mail(
-            subject=f'Подтверждение заказа №{order.id}',
-            message=message,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[order.user.email],
-            fail_silently=False,
-        )
+        serializer = OrderSerializer(basket)
+        return Response({
+            'status': True,
+            'message': 'Заказ успешно создан',
+            'data': serializer.data
+        }, status=status.HTTP_201_CREATED)
 
 
 class OrderDetailView(APIView):
     """
-    Представление для получения и обновления деталей заказа.
-
-    GET: Получает детали конкретного заказа.
-    PUT: Обновляет статус заказа.
+    Представление для работы с детальной информацией о заказе.
     """
     permission_classes = [permissions.IsAuthenticated]
 
-    def get(self, request, pk):
-        """
-        Получение деталей конкретного заказа.
-        """
+    @crud_endpoint(
+        operation='read',
+        resource='orders',
+        summary="Получить детали заказа",
+        description="Возвращает подробную информацию о конкретном заказе",
+        responses={
+            200: OrderSerializer,
+            404: get_error_response("Заказ не найден")
+        }
+    )
+    def get(self, request, order_id):
+        """Получение детальной информации о заказе."""
         try:
-            order = Order.objects.filter(
-                id=pk,
-                user=request.user
-            ).prefetch_related(
+            order = Order.objects.prefetch_related(
                 'ordered_items__product_info__product',
                 'ordered_items__product_info__shop',
-                'ordered_items__product_info__product_parameters__parameter'
-            ).select_related('contact').first()
-
-            if not order:
-                return Response(
-                    {"status": False, "error": "Заказ не найден"},
-                    status=status.HTTP_404_NOT_FOUND
-                )
-
-            serializer = OrderSerializer(order)
-            return Response(serializer.data)
-        except Exception as e:
-            return Response(
-                {"status": False, "error": str(e)},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-
-    def put(self, request, pk):
-        """
-        Отмена заказа пользователем.
-
-        Пользователь может отменить только свой заказ и только в статусе "new".
-        При отмене заказа товары возвращаются в наличие магазинов.
-
-        Ожидаемый формат данных:
-        {
-            "action": "cancel"  # Действие - отмена заказа
-        }
-        """
-        try:
-            # Получаем заказ пользователя
-            order = Order.objects.get(id=pk, user=request.user)
-
-            # Проверяем, что заказ в статусе "new"
-            if order.state != 'new':
-                return Response(
-                    {"status": False, "error": "Отменить можно только новый заказ"},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
-            # Проверяем действие
-            action = request.data.get('action')
-            if action != 'cancel':
-                return Response(
-                    {"status": False, "error": "Неизвестное действие. Допустимое действие: 'cancel'"},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
-            # Начинаем транзакцию для отмены заказа
-            with transaction.atomic():
-                # Возвращаем товары в наличие
-                order_items = OrderItem.objects.filter(order=order).select_related('product_info')
-
-                for item in order_items:
-                    product_info = item.product_info
-                    # Увеличиваем количество товара в магазине
-                    product_info.quantity += item.quantity
-                    product_info.save()
-
-                # Меняем статус заказа на 'canceled'
-                order.state = 'canceled'
-                order.save()
-
-            serializer = OrderSerializer(order)
-            return Response(
-                {"status": True, "message": "Заказ успешно отменен", "data": serializer.data},
-                status=status.HTTP_200_OK
-            )
+                'contact'
+            ).get(id=order_id, user=request.user)
         except Order.DoesNotExist:
-            return Response(
-                {"status": False, "error": "Заказ не найден"},
-                status=status.HTTP_404_NOT_FOUND
-            )
-        except Exception as e:
-            return Response(
-                {"status": False, "error": str(e)},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+            return Response({
+                'status': False,
+                'error': 'Заказ не найден'
+            }, status=status.HTTP_404_NOT_FOUND)
 
+        serializer = OrderSerializer(order)
+        return Response(serializer.data)
+
+    @crud_endpoint(
+        operation='update',
+        resource='orders',
+        summary="Обновить статус заказа",
+        description="Позволяет отменить заказ (только для заказов в статусе 'new')",
+        responses={
+            200: get_success_response("Статус заказа обновлен"),
+            400: get_error_response("Невозможно изменить статус заказа"),
+            404: get_error_response("Заказ не найден")
+        }
+    )
+    def put(self, request, order_id):
+        """Обновление статуса заказа."""
+        try:
+            order = Order.objects.get(id=order_id, user=request.user)
+        except Order.DoesNotExist:
+            return Response({
+                'status': False,
+                'error': 'Заказ не найден'
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        new_state = request.data.get('state')
+
+        # Пользователь может только отменить свой заказ
+        if new_state == 'canceled' and order.state == 'new':
+            order.state = 'canceled'
+            order.save()
+
+            return Response({
+                'status': True,
+                'message': 'Заказ отменен'
+            })
+        else:
+            return Response({
+                'status': False,
+                'error': 'Невозможно изменить статус заказа'
+            }, status=status.HTTP_400_BAD_REQUEST)
