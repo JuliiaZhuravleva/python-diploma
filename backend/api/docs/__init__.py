@@ -23,7 +23,8 @@ from .examples import (
     AUTH_EXAMPLES,
     ORDER_EXAMPLES,
     ERROR_EXAMPLES,
-    SUCCESS_EXAMPLES
+    SUCCESS_EXAMPLES,
+    PARTNER_EXAMPLES
 )
 
 __all__ = [

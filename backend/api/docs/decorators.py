@@ -187,14 +187,15 @@ def partner_endpoint(operation, summary=None, description=None, **kwargs):
         summary = operation_summaries.get(operation, f'Partner {operation}')
 
     # Получаем примеры для операции
-    examples = get_examples_for_operation(operation, 'partner')
+    if 'examples' not in kwargs:
+        examples = get_examples_for_operation(operation, 'partner')
+        kwargs['examples'] = examples
 
     return api_endpoint(
         tags=['Partner'],
         summary=summary,
         description=description,
         include_auth=True,  # Partner endpoints всегда требуют авторизации
-        examples=examples,
         **kwargs
     )
 

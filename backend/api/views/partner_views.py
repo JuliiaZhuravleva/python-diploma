@@ -8,6 +8,17 @@ from backend.models import Shop, Order
 from backend.services.import_service import ImportService
 from backend.tasks import import_shop_data_task
 
+# Импорты системы документации
+from backend.api.docs import (
+    partner_endpoint,
+    api_endpoint,
+    get_success_response,
+    get_error_response,
+    PARTNER_EXAMPLES
+)
+from drf_spectacular.utils import OpenApiParameter
+from drf_spectacular.types import OpenApiTypes
+
 
 
 class PartnerUpdateView(APIView):
@@ -16,6 +27,17 @@ class PartnerUpdateView(APIView):
     """
     permission_classes = [IsAuthenticated]
 
+    @partner_endpoint(
+        operation='update_price',
+        summary="Обновить прайс-лист партнера",
+        description="Загружает и обрабатывает новый прайс-лист партнера из указанного URL",
+        examples=[PARTNER_EXAMPLES['price_update_request']],
+        responses={
+            200: get_success_response("Прайс-лист успешно обновлен"),
+            400: get_error_response("Не указан URL файла"),
+            403: get_error_response("Пользователь не является партнером")
+        }
+    )
     def post(self, request):
         """
         Обновление прайс-листа магазина из указанного URL.
@@ -59,6 +81,15 @@ class PartnerStateView(APIView):
     """
     permission_classes = [IsAuthenticated]
 
+    @partner_endpoint(
+        operation='get_state',
+        summary="Получить статус партнера",
+        description="Возвращает текущий статус работы партнера (принимает заказы или нет)",
+        responses={
+            200: get_success_response("Статус получен", with_data=True),
+            403: get_error_response("Пользователь не является партнером")
+        }
+    )
     def get(self, request):
         """
         Получение текущего статуса магазина пользователя.
@@ -84,6 +115,17 @@ class PartnerStateView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
 
+    @partner_endpoint(
+        operation='update_state',
+        summary="Обновить статус партнера",
+        description="Включает или отключает прием заказов партнером",
+        examples=[PARTNER_EXAMPLES['state_update_request']],
+        responses={
+            200: get_success_response("Статус партнера обновлен"),
+            400: get_error_response("Некорректное значение статуса"),
+            403: get_error_response("Пользователь не является партнером")
+        }
+    )
     def post(self, request):
         """
         Изменение статуса магазина.
@@ -133,6 +175,15 @@ class PartnerOrdersView(APIView):
     """
     permission_classes = [IsAuthenticated]
 
+    @partner_endpoint(
+        operation='get_orders',
+        summary="Получить заказы партнера",
+        description="Возвращает список заказов, содержащих товары данного партнера",
+        responses={
+            200: get_success_response("Список заказов получен", with_data=True),
+            403: get_error_response("Пользователь не является партнером")
+        }
+    )
     def get(self, request):
         """
         Получение списка заказов, содержащих товары магазина пользователя.
