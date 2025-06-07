@@ -101,7 +101,7 @@ class OrderCancelTestCase(TestCase):
         response = self.client.put(self.order_detail_url, data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertTrue(response.data['status'])
-        self.assertEqual(response.data['message'], "Заказ успешно отменен")
+        self.assertEqual(response.data['message'], "Заказ отменен")
 
         # Проверяем, что заказ перешел в статус 'canceled'
         self.order.refresh_from_db()

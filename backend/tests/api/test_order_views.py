@@ -90,7 +90,7 @@ class OrderViewTestCase(TestCase):
         Тестирование получения пустого списка заказов.
         """
         response = self.client.get(self.order_url)
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 0)  # Нет оформленных заказов
 
     def test_place_order(self):
@@ -104,7 +104,7 @@ class OrderViewTestCase(TestCase):
         }
 
         response = self.client.post(self.order_url, data)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertTrue(response.data['status'])
         self.assertEqual(response.data['message'], "Заказ успешно оформлен")
 

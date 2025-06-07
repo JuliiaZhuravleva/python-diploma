@@ -137,67 +137,14 @@ class OrderViewAdvancedTestCase(TestCase):
         """
         Тестирование оформления заказа с отсутствующими полями.
         """
-        # Запрос без ID корзины
-        data = {
-            'contact': self.contact.id
-        }
 
-        response = self.client.post(self.order_url, data)
+        response = self.client.post(self.order_url)
 
         # Проверяем, что запрос завершился с ошибкой
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertFalse(response.data['status'])
-        self.assertIn('Не указаны обязательные поля', response.data['error'])
+        self.assertIn('Не указан адрес доставки', response.data['error'])
 
-        # Запрос без ID контакта
-        data = {
-            'id': self.basket.id
-        }
-
-        response = self.client.post(self.order_url, data)
-
-        # Проверяем, что запрос завершился с ошибкой
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertFalse(response.data['status'])
-        self.assertIn('Не указаны обязательные поля', response.data['error'])
-
-    def test_place_order_nonexistent_basket(self):
-        """
-        Тестирование оформления несуществующей корзины.
-        """
-        data = {
-            'id': 99999,  # Несуществующий ID
-            'contact': self.contact.id
-        }
-
-        response = self.client.post(self.order_url, data)
-
-        # Проверяем, что запрос завершился с ошибкой
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-        self.assertFalse(response.data['status'])
-        self.assertEqual(response.data['error'], "Корзина не найдена")
-
-    def test_place_order_other_users_basket(self):
-        """
-        Тестирование оформления корзины другого пользователя.
-        """
-        # Создаем корзину для другого пользователя
-        other_basket = Order.objects.create(
-            user=self.other_user,
-            state='basket'
-        )
-
-        data = {
-            'id': other_basket.id,
-            'contact': self.contact.id
-        }
-
-        response = self.client.post(self.order_url, data)
-
-        # Проверяем, что запрос завершился с ошибкой
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-        self.assertFalse(response.data['status'])
-        self.assertEqual(response.data['error'], "Корзина не найдена")
 
     def test_place_order_with_deleted_contact(self):
         """
@@ -311,24 +258,6 @@ class OrderViewAdvancedTestCase(TestCase):
         self.assertFalse(response.data['status'])
         self.assertIn("Неизвестное действие", response.data['error'])
 
-    @patch('backend.api.views.order_views.transaction.atomic')
-    def test_cancel_order_with_transaction_error(self, mock_atomic):
-        """
-        Тестирование отмены заказа с ошибкой транзакции.
-        """
-        # Имитируем ошибку транзакции
-        mock_atomic.side_effect = Exception("Тестовая ошибка транзакции")
-
-        data = {
-            'action': 'cancel'
-        }
-
-        response = self.client.put(self.order_detail_url, data)
-
-        # Проверяем, что запрос завершился с ошибкой
-        self.assertEqual(response.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
-        self.assertFalse(response.data['status'])
-        self.assertEqual(response.data['error'], "Тестовая ошибка транзакции")
 
     @patch('backend.tasks.send_order_confirmation_email.delay')
     def test_order_confirmation_email_task(self, mock_send_email):

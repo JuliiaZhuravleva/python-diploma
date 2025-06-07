@@ -105,7 +105,7 @@ class OrderView(APIView):
         if inactive_items.exists():
             return Response({
                 'status': False,
-                'error': 'В корзине есть товары из неактивных магазинов'
+                'error': 'Магазины не принимают заказы'
             }, status=status.HTTP_400_BAD_REQUEST)
 
         # Проверяем достаточность количества товаров
@@ -122,13 +122,23 @@ class OrderView(APIView):
             basket.state = 'new'
             basket.save()
 
+            # Списываем товар со склада
+            for order_item in basket.ordered_items.all():
+                product_info = order_item.product_info
+                if product_info.quantity >= order_item.quantity:
+                    product_info.quantity -= order_item.quantity
+                    product_info.save()
+                else:
+                    # Если товара недостаточно, откатываем транзакцию
+                    raise ValueError(f"Недостаточное количество товара {product_info.product.name}")
+
             # Отправляем email подтверждения
             send_order_confirmation_email.delay(basket.id)
 
         serializer = OrderSerializer(basket)
         return Response({
             'status': True,
-            'message': 'Заказ успешно создан',
+            'message': 'Заказ успешно оформлен',
             'data': serializer.data
         }, status=status.HTTP_201_CREATED)
 
@@ -187,19 +197,38 @@ class OrderDetailView(APIView):
                 'error': 'Заказ не найден'
             }, status=status.HTTP_404_NOT_FOUND)
 
-        new_state = request.data.get('state')
+        # Проверяем, что заказ в статусе "new"
+        if order.state != 'new':
+            return Response(
+                {"status": False, "error": "Отменить можно только новый заказ"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-        # Пользователь может только отменить свой заказ
-        if new_state == 'canceled' and order.state == 'new':
+        # Проверяем действие
+        action = request.data.get('action')
+        if action != 'cancel':
+            return Response(
+                {"status": False, "error": "Неизвестное действие. Допустимое действие: 'cancel'"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Начинаем транзакцию для отмены заказа
+        with transaction.atomic():
+            # Возвращаем товары в наличие
+            order_items = OrderItem.objects.filter(order=order).select_related('product_info')
+
+            for item in order_items:
+                product_info = item.product_info
+                # Увеличиваем количество товара в магазине
+                product_info.quantity += item.quantity
+                product_info.save()
+
+            # Меняем статус заказа на 'canceled'
             order.state = 'canceled'
             order.save()
 
-            return Response({
-                'status': True,
-                'message': 'Заказ отменен'
-            })
-        else:
-            return Response({
-                'status': False,
-                'error': 'Невозможно изменить статус заказа'
-            }, status=status.HTTP_400_BAD_REQUEST)
+        serializer = OrderSerializer(order)
+        return Response(
+            {"status": True, "message": "Заказ отменен", "data": serializer.data},
+            status=status.HTTP_200_OK
+        )

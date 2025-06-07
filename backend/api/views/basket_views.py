@@ -173,18 +173,18 @@ class BasketView(APIView):
                 except ProductInfo.DoesNotExist:
                     error_messages.append(f"Товар с ID {product_info_id} не найден")
 
-                    # Если не удалось добавить ни одного товара
-                    if not any_items_added:
-                        # Удаляем пустую корзину, если она была создана
-                        if basket.ordered_items.count() == 0:
-                            basket.delete()
+            # Если не удалось добавить ни одного товара
+            if not any_items_added:
+                # Удаляем пустую корзину, если она была создана
+                if basket.ordered_items.count() == 0:
+                    basket.delete()
 
-                        # Возвращаем ошибку с сообщением о проблеме
-                        error_message = "Не удалось добавить товары в корзину. " + "; ".join(error_messages)
-                        return Response(
-                            {"status": False, "error": error_message},
-                            status=status.HTTP_400_BAD_REQUEST
-                        )
+                # Возвращаем ошибку с сообщением о проблеме
+                error_message = "Не удалось добавить товары в корзину. " + "; ".join(error_messages)
+                return Response(
+                    {"status": False, "error": error_message},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
             # Получаем обновленные данные корзины
             basket = Order.objects.filter(id=basket.id).prefetch_related(
