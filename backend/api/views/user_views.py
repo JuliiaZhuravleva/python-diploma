@@ -364,7 +364,7 @@ class ContactViewSet(APIView):
         try:
             contact = Contact.objects.get(id=contact_id, user=request.user, is_deleted=False)
         except Contact.DoesNotExist:
-            return Response({'error': 'Контакт не найден'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'error': 'Контакт не найден или был удален'}, status=status.HTTP_404_NOT_FOUND)
 
         serializer = ContactSerializer(contact, data=request.data, partial=True)
 

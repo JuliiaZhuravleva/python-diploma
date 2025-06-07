@@ -143,47 +143,48 @@ class BasketView(APIView):
                 # Проверяем наличие товара
                 try:
                     product_info = ProductInfo.objects.select_related('shop').get(id=product_info_id)
-                    if product_info.shop.state:
-                        # Проверяем наличие достаточного количества товара
-                        if product_info.quantity >= quantity:
-                            # Ищем существующую позицию в корзине
-                            order_item = OrderItem.objects.filter(
-                                order=basket,
-                                product_info=product_info
-                            ).first()
-
-                            if order_item:
-                                # Обновляем существующую позицию
-                                order_item.quantity = F('quantity') + quantity
-                                order_item.save()
-                            else:
-                                # Создаем новую позицию
-                                OrderItem.objects.create(
-                                    order=basket,
-                                    product_info=product_info,
-                                    quantity=quantity
-                                )
-                            # Отмечаем, что хотя бы один товар был добавлен
-                            any_items_added = True
-                        else:
-                            error_messages.append(f"Недостаточное количество товара {product_info.product.name}")
-                    else:
+                    if not product_info.shop.state:
                         error_messages.append(f"Магазин {product_info.shop.name} не принимает заказы")
+                        continue
+
+                        # Проверяем наличие достаточного количества товара
+                    if product_info.quantity >= quantity:
+                        # Ищем существующую позицию в корзине
+                        order_item = OrderItem.objects.filter(
+                            order=basket,
+                            product_info=product_info
+                        ).first()
+
+                        if order_item:
+                            # Обновляем существующую позицию
+                            order_item.quantity = F('quantity') + quantity
+                            order_item.save()
+                        else:
+                            # Создаем новую позицию
+                            OrderItem.objects.create(
+                                order=basket,
+                                product_info=product_info,
+                                quantity=quantity
+                            )
+                        # Отмечаем, что хотя бы один товар был добавлен
+                        any_items_added = True
+                    else:
+                        error_messages.append(f"Недостаточное количество товара {product_info.product.name}")
                 except ProductInfo.DoesNotExist:
                     error_messages.append(f"Товар с ID {product_info_id} не найден")
 
-            # Если не удалось добавить ни одного товара
-            if not any_items_added:
-                # Удаляем пустую корзину, если она была создана
-                if basket.ordered_items.count() == 0:
-                    basket.delete()
+                    # Если не удалось добавить ни одного товара
+                    if not any_items_added:
+                        # Удаляем пустую корзину, если она была создана
+                        if basket.ordered_items.count() == 0:
+                            basket.delete()
 
-                # Возвращаем ошибку с сообщением о проблеме
-                error_message = "Не удалось добавить товары в корзину. " + "; ".join(error_messages)
-                return Response(
-                    {"status": False, "error": error_message},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+                        # Возвращаем ошибку с сообщением о проблеме
+                        error_message = "Не удалось добавить товары в корзину. " + "; ".join(error_messages)
+                        return Response(
+                            {"status": False, "error": error_message},
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
 
             # Получаем обновленные данные корзины
             basket = Order.objects.filter(id=basket.id).prefetch_related(

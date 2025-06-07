@@ -73,16 +73,21 @@ class OrderView(APIView):
 
         # Проверяем существование контакта
         try:
-            contact = Contact.objects.get(id=contact_id, user=request.user)
+            contact = Contact.objects.get(id=contact_id, user=request.user, is_deleted=False)
         except Contact.DoesNotExist:
             return Response({
                 'status': False,
-                'error': 'Контакт не найден'
+                'error': 'Контакт не найден или был удален'
             }, status=status.HTTP_404_NOT_FOUND)
 
         # Получаем корзину
         try:
-            basket = Order.objects.get(user=request.user, state='basket')
+            basket = Order.objects.filter(user=request.user, state='basket').first()
+            if not basket:
+                return Response({
+                    'status': False,
+                    'error': 'Корзина не найдена'
+                }, status=status.HTTP_400_BAD_REQUEST)
         except Order.DoesNotExist:
             return Response({
                 'status': False,
@@ -94,6 +99,22 @@ class OrderView(APIView):
                 'status': False,
                 'error': 'Корзина пуста'
             }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Проверяем, что все товары из активных магазинов
+        inactive_items = basket.ordered_items.filter(product_info__shop__state=False)
+        if inactive_items.exists():
+            return Response({
+                'status': False,
+                'error': 'В корзине есть товары из неактивных магазинов'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Проверяем достаточность количества товаров
+        for item in basket.ordered_items.all():
+            if item.product_info.quantity < item.quantity:
+                return Response({
+                    'status': False,
+                    'error': f'Недостаточное количество товара {item.product_info.product.name}'
+                }, status=status.HTTP_400_BAD_REQUEST)
 
         # Создаем заказ
         with transaction.atomic():
@@ -128,14 +149,14 @@ class OrderDetailView(APIView):
             404: get_error_response("Заказ не найден")
         }
     )
-    def get(self, request, order_id):
+    def get(self, request, pk):
         """Получение детальной информации о заказе."""
         try:
             order = Order.objects.prefetch_related(
                 'ordered_items__product_info__product',
                 'ordered_items__product_info__shop',
                 'contact'
-            ).get(id=order_id, user=request.user)
+            ).get(id=pk, user=request.user)
         except Order.DoesNotExist:
             return Response({
                 'status': False,
@@ -156,10 +177,10 @@ class OrderDetailView(APIView):
             404: get_error_response("Заказ не найден")
         }
     )
-    def put(self, request, order_id):
+    def put(self, request, pk):
         """Обновление статуса заказа."""
         try:
-            order = Order.objects.get(id=order_id, user=request.user)
+            order = Order.objects.get(id=pk, user=request.user)
         except Order.DoesNotExist:
             return Response({
                 'status': False,

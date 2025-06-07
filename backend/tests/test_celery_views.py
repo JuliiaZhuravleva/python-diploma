@@ -148,7 +148,7 @@ class CeleryViewsTestCase(TestCase):
         response = self.client.post('/api/v1/order', data, format='json')
 
         # Проверяем успешный ответ
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertTrue(response.data['status'])
         self.assertEqual(response.data['message'], "Заказ успешно оформлен")
 

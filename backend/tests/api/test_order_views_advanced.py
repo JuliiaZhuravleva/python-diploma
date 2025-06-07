@@ -343,7 +343,7 @@ class OrderViewAdvancedTestCase(TestCase):
         response = self.client.post(self.order_url, data)
 
         # Проверяем, что запрос успешен и задача вызвана
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertTrue(response.data['status'])
 
         # Находим созданный заказ
