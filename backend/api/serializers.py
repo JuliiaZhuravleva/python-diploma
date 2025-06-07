@@ -141,6 +141,19 @@ class OrderSerializer(serializers.ModelSerializer):
         fields = ('id', 'dt', 'state', 'contact', 'ordered_items', 'total_cost')
         read_only_fields = ('id', 'dt')
 
+
+# Для запроса POST на создание заказа
+class OrderCreateSerializer(serializers.Serializer):
+    """Сериализатор для создания заказа из корзины.
+
+    Ожидает только ID контакта для доставки.
+    """
+    contact = serializers.IntegerField(
+        required=True,
+        help_text="ID контакта для доставки"
+    )
+
+
 # Сериализатор для регистрации пользователя
 class UserRegistrationSerializer(serializers.ModelSerializer):
     """

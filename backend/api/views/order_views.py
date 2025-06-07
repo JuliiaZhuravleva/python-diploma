@@ -5,7 +5,7 @@ from django.db import transaction
 from django.db.models import F, Sum, Prefetch
 
 from backend.models import Order, OrderItem, Contact
-from backend.api.serializers import OrderSerializer, OrderItemSerializer
+from backend.api.serializers import OrderSerializer, OrderItemSerializer, OrderCreateSerializer
 from backend.tasks import send_order_confirmation_email
 
 # Импорты для системы документации
@@ -55,6 +55,7 @@ class OrderView(APIView):
         summary="Создать заказ",
         description="Оформляет заказ из корзины с указанным адресом доставки",
         examples=[ORDER_EXAMPLES['order_create_request']],
+        request=OrderCreateSerializer,
         responses={
             201: get_success_response("Заказ успешно создан", with_data=True),
             400: get_error_response("Корзина пуста или не найдена"),
