@@ -8,6 +8,15 @@ from backend.models import ProductInfo
 from backend.api.serializers import ProductInfoSerializer
 
 
+
+# Импорты системы документации
+from backend.api.docs import (
+    crud_endpoint,
+    api_endpoint
+)
+from drf_spectacular.utils import OpenApiParameter
+from drf_spectacular.types import OpenApiTypes
+
 class ProductPagination(PageNumberPagination):
     """
     Класс пагинации для продуктов.
@@ -24,6 +33,30 @@ class ProductView(APIView):
     permission_classes = [AllowAny]
     pagination_class = ProductPagination
 
+    @crud_endpoint(
+        operation='list',
+        resource='products',
+        summary="Получить список товаров",
+        description="Возвращает список товаров с возможностью фильтрации по магазину и категории",
+        requires_auth=False,
+        parameters=[
+            OpenApiParameter(
+                name='shop_id',
+                type=OpenApiTypes.INT,
+                location=OpenApiParameter.QUERY,
+                description='ID магазина для фильтрации',
+                required=False
+            ),
+            OpenApiParameter(
+                name='category_id',
+                type=OpenApiTypes.INT,
+                location=OpenApiParameter.QUERY,
+                description='ID категории для фильтрации',
+                required=False
+            )
+        ],
+        responses={200: ProductInfoSerializer(many=True)}
+    )
     def get(self, request):
         """
         Получение списка товаров с применением фильтров.
@@ -72,6 +105,14 @@ class ProductDetailView(APIView):
     """
     permission_classes = [AllowAny]
 
+    @crud_endpoint(
+        operation='retrieve',
+        resource='product',
+        summary="Получить детальную информацию о конкретном товаре",
+        description="Возвращает детальную информацию о конкретном товаре",
+        requires_auth=False,
+        responses={200: ProductInfoSerializer(many=False)}
+    )
     def get(self, request, pk):
         """
         Получение подробной информации о конкретном товаре.
