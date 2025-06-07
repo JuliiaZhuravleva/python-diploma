@@ -17,6 +17,16 @@ class UserSerializer(serializers.ModelSerializer):
         read_only_fields = ('id',)
 
 
+# Сериализаторы для обновления информации о пользователе
+class UserUpdateSerializer(serializers.Serializer):
+    email = serializers.EmailField(required=False)
+    first_name = serializers.CharField(required=False)
+    last_name = serializers.CharField(required=False)
+    company = serializers.CharField(required=False)
+    position = serializers.CharField(required=False)
+    password = serializers.CharField(required=False, write_only=True)
+
+
 # Сериализаторы для магазинов
 class ShopSerializer(serializers.ModelSerializer):
     """
@@ -28,6 +38,15 @@ class ShopSerializer(serializers.ModelSerializer):
         model = Shop
         fields = ('id', 'name', 'url', 'state')
         read_only_fields = ('id',)
+
+
+# Сериализаторы для обновления информации о магазине
+class ShopStateUpdateSerializer(serializers.Serializer):
+    state = serializers.ChoiceField(
+        choices=['on', 'off'],
+        required=True,
+        help_text="Статус магазина: 'on' - активен, 'off' - неактивен"
+    )
 
 
 # Сериализаторы для категорий
@@ -377,7 +396,15 @@ class BasketItemUpdateSerializer(serializers.Serializer):
     )
 
 
-# Для запроса PUT на обновление корзины
+# Для запроса DELETE на удаление товаров из корзины
+class BasketItemsDeleteSerializer(serializers.Serializer):
+    items = serializers.CharField(
+        required=True,
+        help_text="Список ID позиций для удаления в формате '1,2,3'"
+    )
+
+
+# Для запроса PUT на обновление корзиныPartnerStateView
 class BasketUpdateSerializer(serializers.Serializer):
     """
     Сериализатор для обновления количества товаров в корзине.

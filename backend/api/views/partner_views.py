@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 
-from backend.api.serializers import OrderSerializer, OrderItemSerializer, ContactSerializer
+from backend.api.serializers import OrderSerializer, OrderItemSerializer, ContactSerializer, ShopStateUpdateSerializer
 from backend.models import Shop, Order
 from backend.services.import_service import ImportService
 from backend.tasks import import_shop_data_task
@@ -119,7 +119,7 @@ class PartnerStateView(APIView):
         operation='update_state',
         summary="Обновить статус партнера",
         description="Включает или отключает прием заказов партнером",
-        examples=[PARTNER_EXAMPLES['state_update_request']],
+        request=ShopStateUpdateSerializer,
         responses={
             200: get_success_response("Статус партнера обновлен"),
             400: get_error_response("Некорректное значение статуса"),

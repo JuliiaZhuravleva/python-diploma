@@ -5,9 +5,11 @@ from rest_framework import status, permissions
 from rest_framework.parsers import FormParser, MultiPartParser, JSONParser
 from django.db import transaction
 from django.db.models import F
+
+from backend.api.docs import get_success_response, get_error_response
 from backend.models import Order, OrderItem, ProductInfo
 from backend.api.serializers import OrderSerializer, OrderItemSerializer, BasketAddSerializer, BasketUpdateSerializer, \
-    BasketDeleteSerializer
+    BasketDeleteSerializer, BasketItemsDeleteSerializer
 
 # Импорты для drf-spectacular
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample, OpenApiResponse, inline_serializer
@@ -285,25 +287,11 @@ class BasketView(APIView):
         tags=['Orders'],
         summary="Удалить товары из корзины",
         description="Удаляет выбранные товары из корзины пользователя через form-data",
-        parameters=[
-            OpenApiParameter(
-                name='items',
-                type=OpenApiTypes.STR,
-                location=OpenApiParameter.QUERY,
-                description='Список ID товаров для удаления, разделенных запятыми',
-                required=True,
-            ),
-        ],
-        examples=[
-            OpenApiExample(
-                "Delete as form",
-                summary="multipart/form-data",
-                value={"items": "1,2,3"},
-                media_type="multipart/form-data",
-                request_only=True,
-            ),
-        ],
-        responses={200: OrderSerializer},
+        request=BasketItemsDeleteSerializer,
+        responses={
+            200: get_success_response("Товары удалены из корзины", with_data=True),
+            400: get_error_response("Неверный формат данных")
+    }
     )
     def delete(self, request):
         """

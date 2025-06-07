@@ -11,7 +11,7 @@ from backend.models import User, Contact, ConfirmEmailToken
 from backend.api.serializers import (
     UserSerializer, UserRegistrationSerializer, UserLoginSerializer,
     ConfirmEmailSerializer, ContactSerializer,
-    PasswordResetRequestSerializer, PasswordResetConfirmSerializer
+    PasswordResetRequestSerializer, PasswordResetConfirmSerializer, UserUpdateSerializer, BasketItemsDeleteSerializer
 )
 from backend.tasks import send_confirmation_email, send_password_reset_email
 
@@ -191,7 +191,7 @@ class UserDetailsView(APIView):
         resource='user',
         summary="Обновить данные пользователя",
         description="Обновляет информацию о текущем пользователе. Поддерживает частичное обновление.",
-        request=UserSerializer,
+        request=UserUpdateSerializer,
         responses={
             200: get_success_response("Данные пользователя обновлены", with_data=True)
         }
@@ -379,20 +379,7 @@ class ContactViewSet(APIView):
         resource='contacts',
         summary="Удалить контакты",
         description="Мягкое удаление контактов пользователя",
-        parameters=[
-            OpenApiParameter(
-                name='items',
-                type=OpenApiTypes.STR,
-                description='Список ID контактов для удаления, разделенных запятыми',
-                required=True,
-                examples=[
-                    OpenApiExample(
-                        "Удаление нескольких контактов",
-                        value="1,2,3"
-                    )
-                ]
-            )
-        ],
+        request=BasketItemsDeleteSerializer,
         responses={
             200: get_success_response("Контакты успешно удалены"),
             400: get_error_response("Некорректный формат списка ID")
