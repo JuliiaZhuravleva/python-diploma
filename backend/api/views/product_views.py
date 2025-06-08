@@ -179,15 +179,45 @@ class ProductImageUploadView(APIView):
                 'error': 'Товар не найден'
             }, status=status.HTTP_404_NOT_FOUND)
 
+        # Если у товара уже есть изображение, удаляем старые файлы
+        old_image_path = None
+        if product.image:
+            old_image_path = product.image.path
+
         product.image = request.FILES['image']
         product.save()
 
+        # Принудительно обновляем объект из БД чтобы получить реальный путь к файлу
+        product.refresh_from_db()
+
+        # Проверяем, что файл действительно создан
+        if product.image and hasattr(product.image, 'path'):
+            try:
+                import os
+                if os.path.exists(product.image.path):
+                    from backend.tasks import process_product_image, cleanup_old_images
+                    task = process_product_image.delay(product.id)
+                else:
+                    print(f"Файл не найден: {product.image.path}")
+                    task = None
+            except Exception as e:
+                print(f"Ошибка при проверке файла: {e}")
+                task = None
+        else:
+            task = None
+
         serializer = ProductSerializer(product)
-        return Response({
+        response_data = {
             'status': True,
-            'message': 'Изображение товара успешно загружено',
+            'message': 'Изображение товара успешно загружено.',
             'product': serializer.data
-        }, status=status.HTTP_200_OK)
+        }
+
+        if task:
+            response_data['message'] += ' Дополнительные размеры обрабатываются в фоновом режиме.'
+            response_data['task_id'] = task.id
+
+        return Response(response_data, status=status.HTTP_200_OK)
 
     @crud_endpoint(
         operation='delete',
@@ -217,9 +247,17 @@ class ProductImageUploadView(APIView):
                 'error': 'У товара нет изображения'
             }, status=status.HTTP_404_NOT_FOUND)
 
+        # Получаем путь перед удалением
+        image_path = product.image.path if product.image else None
+
         product.image.delete()
         product.image = None
         product.save()
+
+        # Асинхронно удаляем все связанные файлы
+        if image_path:
+            from backend.tasks import cleanup_old_images
+            cleanup_old_images.delay(image_path)
 
         return Response({
             'status': True,

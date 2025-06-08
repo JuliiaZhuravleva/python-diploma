@@ -449,15 +449,51 @@ class UserAvatarUploadView(APIView):
             }, status=status.HTTP_400_BAD_REQUEST)
 
         user = request.user
+        # Если у пользователя уже есть аватар, удаляем старые файлы
+        old_avatar_path = None
+        if user.avatar:
+            old_avatar_path = user.avatar.path
+
         user.avatar = request.FILES['avatar']
         user.save()
 
+        # Принудительно обновляем объект из БД чтобы получить реальный путь к файлу
+        user.refresh_from_db()
+
+        # Проверяем, что файл действительно создан
+        if user.avatar and hasattr(user.avatar, 'path'):
+            try:
+                # Проверяем существование файла перед запуском задачи
+                import os
+                if os.path.exists(user.avatar.path):
+                    from backend.tasks import process_user_avatar, cleanup_old_images
+                    task = process_user_avatar.delay(user.id)
+                else:
+                    # Логируем для отладки
+                    print(f"Файл не найден: {user.avatar.path}")
+                    task = None
+            except Exception as e:
+                print(f"Ошибка при проверке файла: {e}")
+                task = None
+        else:
+            task = None
+
+        # Удаляем старые файлы асинхронно, если они были
+        if old_avatar_path:
+            cleanup_old_images.delay(old_avatar_path)
+
         serializer = UserSerializer(user)
-        return Response({
+        response_data = {
             'status': True,
-            'message': 'Аватар успешно загружен',
+            'message': 'Аватар успешно загружен.',
             'user': serializer.data
-        }, status=status.HTTP_200_OK)
+        }
+
+        if task:
+            response_data['message'] += ' Дополнительные размеры обрабатываются в фоновом режиме.'
+            response_data['task_id'] = task.id
+
+        return Response(response_data, status=status.HTTP_200_OK)
 
     @crud_endpoint(
         operation='delete',
@@ -480,9 +516,17 @@ class UserAvatarUploadView(APIView):
                 'error': 'У пользователя нет аватара'
             }, status=status.HTTP_404_NOT_FOUND)
 
+        # Получаем путь перед удалением
+        avatar_path = user.avatar.path if user.avatar else None
+
         user.avatar.delete()
         user.avatar = None
         user.save()
+
+        # Асинхронно удаляем все связанные файлы
+        if avatar_path:
+            from backend.tasks import cleanup_old_images
+            cleanup_old_images.delay(avatar_path)
 
         return Response({
             'status': True,
