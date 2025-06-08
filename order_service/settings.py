@@ -281,6 +281,35 @@ SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = os.getenv('SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET',
 SOCIAL_AUTH_GITHUB_KEY = os.getenv('SOCIAL_AUTH_GITHUB_KEY', '')
 SOCIAL_AUTH_GITHUB_SECRET = os.getenv('SOCIAL_AUTH_GITHUB_SECRET', '')
 
+# GitHub OAuth settings - запрашиваем email
+SOCIAL_AUTH_GITHUB_SCOPE = ['user:email']
+
+# Извлекаем email из GitHub API
+SOCIAL_AUTH_GITHUB_EXTRA_DATA = ['login', 'email', 'name']
+
+# Pipeline для обработки email из GitHub
+def get_github_email(backend, response, user=None, *args, **kwargs):
+    """Получает email из GitHub API если он не возвращается напрямую"""
+    if backend.name == 'github':
+        # Если email не получен, пробуем получить через API
+        if not response.get('email'):
+            import requests
+            access_token = kwargs.get('response', {}).get('access_token')
+            if access_token:
+                # Запрашиваем email через GitHub API
+                email_response = requests.get(
+                    'https://api.github.com/user/emails',
+                    headers={'Authorization': f'token {access_token}'}
+                )
+                if email_response.status_code == 200:
+                    emails = email_response.json()
+                    # Берем primary email
+                    for email_data in emails:
+                        if email_data.get('primary'):
+                            response['email'] = email_data['email']
+                            break
+    return {'response': response}
+
 # Social Auth pipeline
 SOCIAL_AUTH_PIPELINE = [
     'social_core.pipeline.social_auth.social_details',
@@ -288,7 +317,9 @@ SOCIAL_AUTH_PIPELINE = [
     'social_core.pipeline.social_auth.auth_allowed',
     'social_core.pipeline.social_auth.social_user',
     'social_core.pipeline.user.get_username',
+    'order_service.settings.get_github_email',
     'social_core.pipeline.user.create_user',
+    'backend.social_pipeline.activate_user',
     'social_core.pipeline.social_auth.associate_user',
     'social_core.pipeline.social_auth.load_extra_data',
     'social_core.pipeline.user.user_details',
@@ -296,3 +327,13 @@ SOCIAL_AUTH_PIPELINE = [
 
 # User model compatibility
 SOCIAL_AUTH_USER_MODEL = AUTH_USER_MODEL
+
+# Social Auth redirects
+LOGIN_URL = '/admin/login/'
+LOGIN_REDIRECT_URL = '/api/v1/social/info/'
+LOGOUT_REDIRECT_URL = '/api/v1/social/info/'
+
+# Social Auth settings
+SOCIAL_AUTH_LOGIN_REDIRECT_URL = '/api/v1/social/info/'
+SOCIAL_AUTH_NEW_USER_REDIRECT_URL = '/api/v1/social/info/'
+SOCIAL_AUTH_LOGIN_ERROR_URL = '/api/v1/social/info/'

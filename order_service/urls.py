@@ -16,9 +16,10 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from django.contrib.auth import views as auth_views
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
 
-from backend.api.views.social_views import SocialAuthInfoView
+from backend.api.views.social_views import SocialAuthInfoView, SimpleLogoutView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -32,4 +33,6 @@ urlpatterns = [
     # auth
     path('auth/', include('social_django.urls', namespace='social')),
     path('api/v1/social/info/', SocialAuthInfoView.as_view(), name='social-info'),
+    path('auth/logout/', auth_views.LogoutView.as_view(next_page='/api/v1/social/info/'), name='logout'),
+    path('logout/', SimpleLogoutView.as_view(), name='simple-logout'),
 ]
