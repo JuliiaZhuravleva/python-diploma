@@ -11,7 +11,7 @@ from backend.api.views.user_views import (
     UserAvatarUploadView
 )
 from backend.api.views.shop_views import ShopView, CategoryView
-from backend.api.views import TestAuthView
+from backend.api.views.test_views import TestAuthView
 from backend.api.views.debug_views import (
     test_zero_division_error,
     test_unhandled_exception,

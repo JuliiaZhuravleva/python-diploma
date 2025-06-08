@@ -1,7 +1,9 @@
 from django.test import TestCase
 from rest_framework.response import Response
 from rest_framework import status
-from backend.api.views import ApiResponse, TestAuthView
+from backend.api.views import ApiResponse
+from backend.api.views.test_views import TestAuthView
+
 
 
 class ApiResponseTestCase(TestCase):

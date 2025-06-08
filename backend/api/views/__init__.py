@@ -48,13 +48,3 @@ class ApiResponse:
             response['errors'] = errors
 
         return Response(response, status=status_code)
-
-
-class TestAuthView(APIView):
-    """
-    Тестовый view для проверки аутентификации.
-    """
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get(self, request):
-        return Response({"message": "You are authenticated"}, status=status.HTTP_200_OK)
