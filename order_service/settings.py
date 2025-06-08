@@ -20,6 +20,15 @@ from .baton_config import BATON_MENU
 # Импорт конфигурации Sentry
 import sentry_sdk
 
+# Детекция тестового режима
+import sys
+IS_TESTING = (
+    'test' in sys.argv or
+    any('test' in arg for arg in sys.argv) or
+    'pytest' in sys.modules or
+    os.environ.get('TESTING') == 'True'
+)
+
 # Load environment variables from .env file
 load_dotenv()
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -114,19 +123,32 @@ DATABASES = {
 }
 
 # Django Cache settings (для django-cachalot)
-CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
-        'LOCATION': os.getenv('CACHE_LOCATION', 'redis://localhost:6379/1'),
-        'KEY_PREFIX': 'cachalot',
-        'TIMEOUT': 300,  # 5 минут по умолчанию
+if IS_TESTING:
+    # В тестах используем локальный кэш в памяти, но cachalot оставляем включенным
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'test-cache',
+            'TIMEOUT': 300,
+        }
     }
-}
-
-# Django-cachalot settings
-CACHALOT_ENABLED = True
-CACHALOT_CACHE = 'default'
-CACHALOT_TIMEOUT = 300  # 5 минут
+    # В тестах тоже включаем cachalot, но с локальным кэшем
+    CACHALOT_ENABLED = True
+    CACHALOT_CACHE = 'default'
+    CACHALOT_TIMEOUT = 300
+else:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+            'LOCATION': os.getenv('CACHE_LOCATION', 'redis://localhost:6379/1'),
+            'KEY_PREFIX': 'cachalot',
+            'TIMEOUT': 300,  # 5 минут по умолчанию
+        }
+    }
+    # Django-cachalot settings для продакшена
+    CACHALOT_ENABLED = True
+    CACHALOT_CACHE = 'default'
+    CACHALOT_TIMEOUT = 300  # 5 минут
 
 THROTTLE_RATES = {
     # Базовые лимиты
@@ -389,7 +411,7 @@ SENTRY_ENVIRONMENT = os.getenv('SENTRY_ENVIRONMENT', 'development')
 SENTRY_TRACES_SAMPLE_RATE = float(os.getenv('SENTRY_TRACES_SAMPLE_RATE', '1.0'))
 SENTRY_PROFILES_SAMPLE_RATE = float(os.getenv('SENTRY_PROFILES_SAMPLE_RATE', '1.0'))
 
-if SENTRY_DSN:
+if SENTRY_DSN and not IS_TESTING:
     sentry_sdk.init(
         dsn=SENTRY_DSN,
         # Интеграции подключаются автоматически для Django и Celery
@@ -415,3 +437,7 @@ if SENTRY_DSN:
         # Debug mode (only send in production if DSN is set)
         debug=DEBUG and bool(SENTRY_DSN),
     )
+elif IS_TESTING:
+    # В тестах полностью отключаем Sentry логирование
+    import logging
+    logging.getLogger('sentry_sdk').setLevel(logging.CRITICAL)
