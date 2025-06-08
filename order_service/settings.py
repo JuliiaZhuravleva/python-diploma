@@ -356,4 +356,5 @@ BATON = {
     'SUPPORT_HREF': False,
     'COPYRIGHT': 'Copyright © 2024 Система автоматизации закупок',
     'POWERED_BY': '<a href="https://github.com/JuliiaZhuravleva/python-diploma">Python Diploma Project</a>',
+    'MENU': BATON_MENU
 }
