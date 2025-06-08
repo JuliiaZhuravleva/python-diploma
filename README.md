@@ -26,6 +26,7 @@
 - Social Auth для авторизации через соцсети (Google, GitHub)
 - Coverage.py для измерения покрытия тестов
 - Sentry.io для отслеживания ошибок
+- Django-Cachalot для кэширования
 
 ## Установка и запуск
 
@@ -169,6 +170,10 @@ celery -A order_service worker --loglevel=info
 ### Настройка Sentry.io
 
 см. [SENTRY_SETUP](SENTRY_SETUP.md)
+
+### Настройка кеширования
+
+см. [CACHING_IMPLEMENTATION](CACHING_IMPLEMENTATION.md)
 
 ## Админ-панель
 

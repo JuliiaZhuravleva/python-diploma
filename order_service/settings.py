@@ -58,6 +58,7 @@ INSTALLED_APPS = [
     'drf_spectacular_sidecar',
     'social_django',
     'imagekit',
+    'cachalot',
 
     # Локальные приложения
     'backend',
@@ -111,6 +112,21 @@ DATABASES = {
         'PORT': os.getenv('DB_PORT', ''),
     }
 }
+
+# Django Cache settings (для django-cachalot)
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+        'LOCATION': os.getenv('CACHE_LOCATION', 'redis://localhost:6379/1'),
+        'KEY_PREFIX': 'cachalot',
+        'TIMEOUT': 300,  # 5 минут по умолчанию
+    }
+}
+
+# Django-cachalot settings
+CACHALOT_ENABLED = True
+CACHALOT_CACHE = 'default'
+CACHALOT_TIMEOUT = 300  # 5 минут
 
 THROTTLE_RATES = {
     # Базовые лимиты
