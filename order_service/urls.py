@@ -16,12 +16,15 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from django.conf import settings
+from django.conf.urls.static import static
 from django.contrib.auth import views as auth_views
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
 
 from backend.api.views.social_views import SocialAuthInfoView, SimpleLogoutView
 
 urlpatterns = [
+    path('baton/', include('baton.urls')),
     path('admin/', admin.site.urls),
     path('api/v1/', include('backend.api.urls', namespace='api')),
 
@@ -36,3 +39,8 @@ urlpatterns = [
     path('auth/logout/', auth_views.LogoutView.as_view(next_page='/api/v1/social/info/'), name='logout'),
     path('logout/', SimpleLogoutView.as_view(), name='simple-logout'),
 ]
+
+# Добавляем статические файлы в режиме разработки
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

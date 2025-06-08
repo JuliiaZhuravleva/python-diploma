@@ -32,3 +32,5 @@ drf-spectacular>=0.27.0
 drf-spectacular-sidecar>=2024.5.1
 
 social-auth-app-django>=5.4.3
+
+django-baton>=5.0.0

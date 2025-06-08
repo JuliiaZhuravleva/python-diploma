@@ -14,6 +14,9 @@ from dotenv import load_dotenv
 import os
 from pathlib import Path
 
+# Импорт конфигурации Baton
+from .baton_config import BATON_MENU
+
 # Load environment variables from .env file
 load_dotenv()
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -35,12 +38,14 @@ ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 # Application definition
 
 INSTALLED_APPS = [
+    'baton',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'baton.autodiscover',
     'django_rest_passwordreset',
 
     # Сторонние библиотеки
@@ -185,7 +190,12 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
 STATIC_URL = 'static/'
-STATIC_ROOT = BASE_DIR / 'static'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+# Добавим директории для статических файлов в режиме разработки
+STATICFILES_DIRS = [
+    BASE_DIR / 'static',
+] if DEBUG else []
 
 MEDIA_URL = 'media/'
 MEDIA_ROOT = BASE_DIR / 'media'
@@ -337,3 +347,13 @@ LOGOUT_REDIRECT_URL = '/api/v1/social/info/'
 SOCIAL_AUTH_LOGIN_REDIRECT_URL = '/api/v1/social/info/'
 SOCIAL_AUTH_NEW_USER_REDIRECT_URL = '/api/v1/social/info/'
 SOCIAL_AUTH_LOGIN_ERROR_URL = '/api/v1/social/info/'
+
+# Django Baton settings
+BATON = {
+    'SITE_HEADER': 'Система автоматизации закупок',
+    'SITE_TITLE': 'Админ панель',
+    'INDEX_TITLE': 'Добро пожаловать в панель управления',
+    'SUPPORT_HREF': False,
+    'COPYRIGHT': 'Copyright © 2024 Система автоматизации закупок',
+    'POWERED_BY': '<a href="https://github.com/JuliiaZhuravleva/python-diploma">Python Diploma Project</a>',
+}
