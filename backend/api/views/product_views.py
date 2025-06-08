@@ -1,18 +1,18 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.pagination import PageNumberPagination
 from django.db.models import Q
-from backend.models import ProductInfo
-from backend.api.serializers import ProductInfoSerializer
+from backend.models import ProductInfo, Product
+from backend.api.serializers import ProductSerializer, ProductInfoSerializer
 
 
 
 # Импорты системы документации
 from backend.api.docs import (
     crud_endpoint,
-    api_endpoint
+    api_endpoint, get_success_response, get_error_response
 )
 from drf_spectacular.utils import OpenApiParameter
 from drf_spectacular.types import OpenApiTypes
@@ -139,3 +139,89 @@ class ProductDetailView(APIView):
                 {"status": False, "error": "Товар не найден"},
                 status=status.HTTP_404_NOT_FOUND
             )
+
+
+class ProductImageUploadView(APIView):
+    """
+    Представление для загрузки изображения товара.
+    """
+    permission_classes = [IsAuthenticated]
+
+    @crud_endpoint(
+        operation='update',
+        resource='product_image',
+        summary="Загрузить изображение товара",
+        description="Загружает изображение для товара. Автоматически изменяет размер до 400x400 пикселей.",
+        responses={
+            200: get_success_response("Изображение товара успешно загружено", with_data=True),
+            400: get_error_response("Файл image не найден или некорректный формат"),
+            404: get_error_response("Товар не найден")
+        }
+    )
+    def post(self, request, product_id):
+        """
+        Загружает изображение товара.
+
+        Ожидает multipart/form-data с полем 'image' содержащим изображение.
+        Поддерживаемые форматы: JPEG, PNG, GIF.
+        """
+        if 'image' not in request.FILES:
+            return Response({
+                'status': False,
+                'error': 'Файл image не найден'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            product = Product.objects.get(id=product_id)
+        except Product.DoesNotExist:
+            return Response({
+                'status': False,
+                'error': 'Товар не найден'
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        product.image = request.FILES['image']
+        product.save()
+
+        serializer = ProductSerializer(product)
+        return Response({
+            'status': True,
+            'message': 'Изображение товара успешно загружено',
+            'product': serializer.data
+        }, status=status.HTTP_200_OK)
+
+    @crud_endpoint(
+        operation='delete',
+        resource='product_image',
+        summary="Удалить изображение товара",
+        description="Удаляет изображение товара",
+        responses={
+            200: get_success_response("Изображение товара успешно удалено"),
+            404: get_error_response("Товар не найден или у товара нет изображения")
+        }
+    )
+    def delete(self, request, product_id):
+        """
+        Удаляет изображение товара.
+        """
+        try:
+            product = Product.objects.get(id=product_id)
+        except Product.DoesNotExist:
+            return Response({
+                'status': False,
+                'error': 'Товар не найден'
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        if not product.image:
+            return Response({
+                'status': False,
+                'error': 'У товара нет изображения'
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        product.image.delete()
+        product.image = None
+        product.save()
+
+        return Response({
+            'status': True,
+            'message': 'Изображение товара успешно удалено'
+        }, status=status.HTTP_200_OK)

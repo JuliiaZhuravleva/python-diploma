@@ -3,6 +3,11 @@ from rest_framework.response import Response
 from rest_framework import status, permissions
 from rest_framework.authtoken.models import Token
 from rest_framework.throttling import ScopedRateThrottle
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework import status
+from backend.api.serializers import UserSerializer
 from django.db import transaction
 
 from backend.models import User, Contact, ConfirmEmailToken
@@ -412,3 +417,74 @@ class ContactViewSet(APIView):
         contacts.update(is_deleted=True)
 
         return Response({'message': f'Удалено контактов: {deleted_count}'})
+
+
+class UserAvatarUploadView(APIView):
+    """
+    Представление для загрузки аватара пользователя.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    @crud_endpoint(
+        operation='update',
+        resource='user_avatar',
+        summary="Загрузить аватар пользователя",
+        description="Загружает изображение аватара для текущего пользователя. Автоматически изменяет размер до 150x150 пикселей.",
+        responses={
+            200: get_success_response("Аватар успешно загружен", with_data=True),
+            400: get_error_response("Файл avatar не найден или некорректный формат")
+        }
+    )
+    def post(self, request):
+        """
+        Загружает аватар пользователя.
+
+        Ожидает multipart/form-data с полем 'avatar' содержащим изображение.
+        Поддерживаемые форматы: JPEG, PNG, GIF.
+        """
+        if 'avatar' not in request.FILES:
+            return Response({
+                'status': False,
+                'error': 'Файл avatar не найден'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        user = request.user
+        user.avatar = request.FILES['avatar']
+        user.save()
+
+        serializer = UserSerializer(user)
+        return Response({
+            'status': True,
+            'message': 'Аватар успешно загружен',
+            'user': serializer.data
+        }, status=status.HTTP_200_OK)
+
+    @crud_endpoint(
+        operation='delete',
+        resource='user_avatar',
+        summary="Удалить аватар пользователя",
+        description="Удаляет аватар текущего пользователя",
+        responses={
+            200: get_success_response("Аватар успешно удален"),
+            404: get_error_response("У пользователя нет аватара")
+        }
+    )
+    def delete(self, request):
+        """
+        Удаляет аватар пользователя.
+        """
+        user = request.user
+        if not user.avatar:
+            return Response({
+                'status': False,
+                'error': 'У пользователя нет аватара'
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        user.avatar.delete()
+        user.avatar = None
+        user.save()
+
+        return Response({
+            'status': True,
+            'message': 'Аватар успешно удален'
+        }, status=status.HTTP_200_OK)

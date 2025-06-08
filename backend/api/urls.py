@@ -4,10 +4,11 @@ from backend.api.views.basket_views import BasketView
 from backend.api.views.celery_views import TaskStatusView
 from backend.api.views.order_views import OrderView, OrderDetailView
 from backend.api.views.partner_views import PartnerUpdateView, PartnerStateView, PartnerOrdersView
-from backend.api.views.product_views import ProductView, ProductDetailView
+from backend.api.views.product_views import ProductView, ProductDetailView, ProductImageUploadView
 from backend.api.views.user_views import (
     UserRegisterView, ConfirmEmailView, UserLoginView, UserDetailsView,
-    PasswordResetRequestView, PasswordResetConfirmView, ContactViewSet
+    PasswordResetRequestView, PasswordResetConfirmView, ContactViewSet,
+    UserAvatarUploadView
 )
 from backend.api.views.shop_views import ShopView, CategoryView
 from backend.api.views import TestAuthView
@@ -26,12 +27,14 @@ urlpatterns = [
     path('user/password_reset', PasswordResetRequestView.as_view(), name='password-reset-request'),
     path('user/password_reset/confirm', PasswordResetConfirmView.as_view(), name='password-reset-confirm'),
     path('user/contact', ContactViewSet.as_view(), name='user-contact'),
+    path('user/avatar', UserAvatarUploadView.as_view(), name='user-avatar'),
 
     # URL для магазинов
     path('shops', ShopView.as_view(), name='shops'),
     path('categories', CategoryView.as_view(), name='categories'),
     path('products', ProductView.as_view(), name='products'),
     path('products/<int:pk>', ProductDetailView.as_view(), name='product-detail'),
+    path('products/<int:product_id>/image', ProductImageUploadView.as_view(), name='product-image'),
 
     # URL для корзины и заказов
     path('basket', BasketView.as_view(), name='basket'),

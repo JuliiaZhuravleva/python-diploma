@@ -6,6 +6,10 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django_rest_passwordreset.tokens import get_token_generator
 
+from imagekit.models import ProcessedImageField
+from imagekit.processors import ResizeToFill
+import os
+
 STATE_CHOICES = (
     ('basket', 'Статус корзины'),
     ('new', 'Новый'),
@@ -115,6 +119,18 @@ class User(AbstractUser):
         ),
     )
     type = models.CharField(verbose_name='Тип пользователя', choices=USER_TYPE_CHOICES, max_length=20, default='buyer')
+
+    avatar = ProcessedImageField(
+        upload_to='avatars/',
+        processors=[ResizeToFill(150, 150)],
+        format='JPEG',
+        options={'quality': 85},
+        verbose_name='Аватар',
+        blank=True,
+        null=True,
+        help_text='Изображение профиля пользователя'
+    )
+
     groups = models.ManyToManyField(
         'auth.Group',
         verbose_name=_('groups'),
@@ -197,6 +213,16 @@ class Product(models.Model):
     name = models.CharField(max_length=80, verbose_name='Название')
     category = models.ForeignKey(Category, verbose_name='Категория', related_name='products', blank=True, null=True,
                                  on_delete=models.CASCADE)
+    image = ProcessedImageField(
+        upload_to='products/',
+        processors=[ResizeToFill(400, 400)],
+        format='JPEG',
+        options={'quality': 85},
+        verbose_name='Изображение товара',
+        blank=True,
+        null=True,
+        help_text='Основное изображение товара'
+    )
 
     class Meta:
         verbose_name = 'Продукт'
