@@ -102,6 +102,15 @@ DATABASES = {
     }
 }
 
+THROTTLE_RATES = {
+    # Базовые лимиты
+    'anon': '100/hour',
+    'user': '1000/hour',
+
+    # Критические операции (по IP адресу)
+    'registration': '5/hour',
+}
+
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.TokenAuthentication',
@@ -123,6 +132,14 @@ REST_FRAMEWORK = {
     ],
     'EXCEPTION_HANDLER': 'rest_framework.views.exception_handler',
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.ScopedRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'registration': '5/hour',
+        'login': '10/hour',
+        'password_reset': '3/hour',
+    }
 }
 
 # Password validation

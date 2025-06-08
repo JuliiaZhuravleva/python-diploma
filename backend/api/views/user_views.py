@@ -2,10 +2,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions
 from rest_framework.authtoken.models import Token
+from rest_framework.throttling import ScopedRateThrottle
 from django.db import transaction
-from django.core.mail import send_mail
-from django.conf import settings
-from django.contrib.auth import authenticate
 
 from backend.models import User, Contact, ConfirmEmailToken
 from backend.api.serializers import (
@@ -37,6 +35,8 @@ class UserRegisterView(APIView):
     генерирует токен подтверждения и отправляет его на указанный email.
     """
     permission_classes = [permissions.AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'registration'
 
     @auth_endpoint(
         operation='register',
