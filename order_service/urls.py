@@ -18,6 +18,8 @@ from django.contrib import admin
 from django.urls import path, include
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
 
+from backend.api.views.social_views import SocialAuthInfoView
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/v1/', include('backend.api.urls', namespace='api')),
@@ -27,4 +29,7 @@ urlpatterns = [
     path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),  # Swagger UI
     path('api/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),  # Redoc UI
 
+    # auth
+    path('auth/', include('social_django.urls', namespace='social')),
+    path('api/v1/social/info/', SocialAuthInfoView.as_view(), name='social-info'),
 ]
