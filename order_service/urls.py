@@ -44,3 +44,10 @@ urlpatterns = [
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+
+    def trigger_error(request):
+        division_by_zero = 1 / 0
+
+    urlpatterns += [
+        path('sentry-debug/', trigger_error),
+    ]

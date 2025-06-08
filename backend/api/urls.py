@@ -12,6 +12,15 @@ from backend.api.views.user_views import (
 )
 from backend.api.views.shop_views import ShopView, CategoryView
 from backend.api.views import TestAuthView
+from backend.api.views.debug_views import (
+    test_zero_division_error,
+    test_unhandled_exception,
+    test_database_error,
+    test_slow_request,
+    test_success,
+    test_custom_exception
+)
+from order_service import settings
 
 app_name = 'api'
 
@@ -48,4 +57,13 @@ urlpatterns = [
 
     # URL для Celery
     path('task/<str:task_id>', TaskStatusView.as_view(), name='task-status'),
-]
+
+    # Debug endpoints для тестирования Sentry (только для разработки)
+    ] + ([] if not settings.DEBUG else [
+    path('debug/sentry/zero-division/', test_zero_division_error, name='debug-zero-division'),
+    path('debug/sentry/unhandled-exception/', test_unhandled_exception, name='debug-unhandled-exception'),
+    path('debug/sentry/database-error/', test_database_error, name='debug-database-error'),
+    path('debug/sentry/slow-request/', test_slow_request, name='debug-slow-request'),
+    path('debug/sentry/success/', test_success, name='debug-success'),
+    path('debug/sentry/custom-exception/', test_custom_exception, name='debug-custom-exception'),
+])

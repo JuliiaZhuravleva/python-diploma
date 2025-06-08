@@ -17,6 +17,9 @@ from pathlib import Path
 # Импорт конфигурации Baton
 from .baton_config import BATON_MENU
 
+# Импорт конфигурации Sentry
+import sentry_sdk
+
 # Load environment variables from .env file
 load_dotenv()
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -363,3 +366,36 @@ BATON = {
     'POWERED_BY': '<a href="https://github.com/JuliiaZhuravleva/python-diploma">Python Diploma Project</a>',
     'MENU': BATON_MENU
 }
+
+# Sentry Configuration
+SENTRY_DSN = os.getenv('SENTRY_DSN')
+SENTRY_ENVIRONMENT = os.getenv('SENTRY_ENVIRONMENT', 'development')
+SENTRY_TRACES_SAMPLE_RATE = float(os.getenv('SENTRY_TRACES_SAMPLE_RATE', '1.0'))
+SENTRY_PROFILES_SAMPLE_RATE = float(os.getenv('SENTRY_PROFILES_SAMPLE_RATE', '1.0'))
+
+if SENTRY_DSN:
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        # Интеграции подключаются автоматически для Django и Celery
+
+        # Performance Monitoring
+        traces_sample_rate=SENTRY_TRACES_SAMPLE_RATE,
+
+        # Profiling (новый параметр в 2.x)
+        profiles_sample_rate=SENTRY_PROFILES_SAMPLE_RATE,
+
+        # Environment
+        environment=SENTRY_ENVIRONMENT,
+
+        # Send user data with errors (email, username)
+        send_default_pii=True,
+
+        # Release tracking
+        release=f"order-service@1.0.0",
+
+        # Additional options
+        attach_stacktrace=True,
+
+        # Debug mode (only send in production if DSN is set)
+        debug=DEBUG and bool(SENTRY_DSN),
+    )

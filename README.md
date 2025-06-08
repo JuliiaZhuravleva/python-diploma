@@ -25,6 +25,7 @@
 - DRF Spectacular для автоматической документации API
 - Social Auth для авторизации через соцсети (Google, GitHub)
 - Coverage.py для измерения покрытия тестов
+- Sentry.io для отслеживания ошибок
 
 ## Установка и запуск
 
@@ -164,6 +165,10 @@ celery -A order_service worker --loglevel=info
 ```bash
   DEBUG_SQL=True
 ```
+
+### Настройка Sentry.io
+
+см. [SENTRY_SETUP](SENTRY_SETUP.md)
 
 ## Админ-панель
 

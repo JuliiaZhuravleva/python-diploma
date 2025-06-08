@@ -37,3 +37,5 @@ django-baton>=5.0.0
 
 Pillow>=10.0.0
 django-imagekit>=5.0.0
+
+sentry-sdk[django]>=2.29.1
