@@ -40,7 +40,7 @@
 1. Клонируйте репозиторий:
     
     ```bash
-    git clone <https://github.com/your-username/retail-order-service.git>
+    git clone https://github.com/JuliiaZhuravleva/python-diploma.git
     cd retail-order-service
     
     ```
